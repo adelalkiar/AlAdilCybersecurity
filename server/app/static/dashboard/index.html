@@ -50,6 +50,7 @@
         </label>
         <button id="refresh-btn">تحديث</button>
         <button id="licenses-btn">التراخيص</button>
+        <button id="change-password-btn">كلمة المرور</button>
       </div>
     </header>
 
@@ -99,6 +100,7 @@
               <option value="week">أسبوع</option>
               <option value="month">شهر</option>
               <option value="year">سنة</option>
+              <option value="lifetime">مدى الحياة (بلا انتهاء)</option>
             </select>
           </div>
           <button id="lic-issue-btn">إصدار الترخيص</button>
@@ -106,6 +108,20 @@
         </div>
         <h3>التراخيص الصادرة</h3>
         <div id="lic-list"></div>
+      </div>
+    </div>
+
+    <div id="password-modal" class="modal hidden">
+      <div class="modal-content">
+        <button class="modal-close" id="password-close">×</button>
+        <h2>تغيير كلمة المرور</h2>
+        <div class="license-form">
+          <input id="pwd-current" type="password" placeholder="كلمة المرور الحالية" />
+          <input id="pwd-new" type="password" placeholder="كلمة المرور الجديدة (8 أحرف على الأقل)" />
+          <input id="pwd-confirm" type="password" placeholder="تأكيد كلمة المرور الجديدة" />
+          <button id="pwd-save-btn">حفظ كلمة المرور الجديدة</button>
+          <p id="pwd-result"></p>
+        </div>
       </div>
     </div>
   </div>

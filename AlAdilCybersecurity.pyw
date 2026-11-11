@@ -15,44 +15,23 @@ aladil-agent.exe في Thread منفصل، (3) أيقونة النظام الرس
 """
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(ROOT))
 
+from scripts.dev_launch_utils import ensure_project_venv
 
-def _relaunch_with_project_venv() -> None:
-    """عند النقر المزدوج على الملف يشغّله ويندوز بمفسّر بايثون النظام
-    الافتراضي (عبر ارتباط .pyw)، وهو لا يملك مكتبات المشروع (bleak,
-    scapy, ...) المثبَّتة في .venv الخاصة بالمشروع فقط. إن لم نكن نعمل
-    فعليًا من داخل .venv هذه، نُعيد تشغيل هذا الملف بمفسّرها الصحيح."""
-    venv_python = ROOT / ".venv" / "Scripts" / (
-        "pythonw.exe" if Path(sys.executable).stem.lower() != "python" else "python.exe"
-    )
-    if not venv_python.exists():
-        return  # لا توجد بيئة مشروع؛ نستمر بما هو متاح ونترك الخطأ واضحًا إن حدث
-    if Path(sys.executable).resolve() == venv_python.resolve():
-        return  # نعمل فعليًا من بيئة المشروع الصحيحة
-    # نتجنّب os.execv على ويندوز: تمريره مسارات تحتوي مسافات غير موثوق
-    # (يُفسَّر سطر الأوامر الناتج بشكل خاطئ)، فنستخدم subprocess بدلًا
-    # منه مع قائمة argv مباشرة (بلا قشرة) ثم نخرج بنفس كود الإنهاء.
-    import subprocess
-
-    result = subprocess.run([str(venv_python), str(Path(__file__).resolve())])
-    sys.exit(result.returncode)
-
-
-_relaunch_with_project_venv()
+ensure_project_venv(ROOT, Path(__file__))
 
 import asyncio
+import os
 import socket
 import subprocess
 import threading
 import time
 from urllib.parse import urlparse
-
-sys.path.insert(0, str(ROOT))
 
 from agent.app.config import CONFIG_DIR, AgentConfig
 from agent.app.main import run_forever

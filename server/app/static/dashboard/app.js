@@ -13,6 +13,20 @@ const INTRUDER_LABELS = {
 
 function $(sel) { return document.querySelector(sel); }
 
+// يُعقِّم أي نص قبل إدراجه في innerHTML - إلزامي لكل حقل يرد من الخادم
+// (hostname، vendor، عناوين الثغرات...) لأن الكثير منها قابل للتحكم به
+// فعليًا من أي جهاز على الشبكة (اسم شبكة WiFi، اسم جهاز mDNS/Bluetooth)
+// قبل أن يصل أصلًا لقاعدة البيانات - بلا هذا التعقيم يصبح ذلك XSS مخزَّن.
+function esc(value) {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 async function api(path, options = {}) {
   const headers = options.headers || {};
   if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -71,15 +85,15 @@ function renderSummary(devices) {
 
 function renderRows(devices) {
   $("#device-rows").innerHTML = devices.map((d) => `
-    <tr data-id="${d.id}">
-      <td><span class="badge ${d.overall_threat_level}">${THREAT_LABELS[d.overall_threat_level] || d.overall_threat_level}</span></td>
-      <td>${d.hostname || "جهاز غير معروف"}${d.is_unidentified ? ' <span class="badge info">مجهول</span>' : ""}${d.identity_spoof_suspected ? ' <span class="badge spoof-alert">⚠ انتحال محتمل</span>' : ""}</td>
-      <td>${d.ip_address || "—"}</td>
-      <td>${d.mac_address || "—"}<br><small>${d.vendor || ""}</small></td>
-      <td>${d.connection_medium}</td>
+    <tr data-id="${esc(d.id)}">
+      <td><span class="badge ${esc(d.overall_threat_level)}">${esc(THREAT_LABELS[d.overall_threat_level] || d.overall_threat_level)}</span></td>
+      <td>${esc(d.hostname) || "جهاز غير معروف"}${d.is_unidentified ? ' <span class="badge info">مجهول</span>' : ""}${d.identity_spoof_suspected ? ' <span class="badge spoof-alert">⚠ انتحال محتمل</span>' : ""}</td>
+      <td>${esc(d.ip_address) || "—"}</td>
+      <td>${esc(d.mac_address) || "—"}<br><small>${esc(d.vendor)}</small></td>
+      <td>${esc(d.connection_medium)}</td>
       <td>${d.access_likelihood_score.toFixed(0)}%</td>
       <td>${d.potential_damage_score.toFixed(0)}%</td>
-      <td><span class="badge intruder-${d.intruder_status}">${INTRUDER_LABELS[d.intruder_status] || d.intruder_status}</span></td>
+      <td><span class="badge intruder-${esc(d.intruder_status)}">${esc(INTRUDER_LABELS[d.intruder_status] || d.intruder_status)}</span></td>
       <td>${new Date(d.last_seen).toLocaleString("ar")}</td>
     </tr>
   `).join("");
@@ -111,24 +125,24 @@ async function openDevice(id) {
   const d = await api(`/api/devices/${id}`);
   const vulnsHtml = (d.vulnerabilities || []).map((v) => `
     <div class="vuln-item">
-      <h4>${v.cve_id ? `${v.cve_id} — ` : ""}${v.title} <span class="badge ${v.severity}">${THREAT_LABELS[v.severity] || v.severity}</span></h4>
-      <p>${v.description || ""}</p>
-      ${v.recommended_fix ? `<div class="fix">الحل الموصى به: ${v.recommended_fix}</div>` : ""}
+      <h4>${v.cve_id ? `${esc(v.cve_id)} — ` : ""}${esc(v.title)} <span class="badge ${esc(v.severity)}">${esc(THREAT_LABELS[v.severity] || v.severity)}</span></h4>
+      <p>${esc(v.description)}</p>
+      ${v.recommended_fix ? `<div class="fix">الحل الموصى به: ${esc(v.recommended_fix)}</div>` : ""}
       ${v.added_by_user ? `<small>أُضيفت يدويًا من قبل محلل</small>` : ""}
     </div>
   `).join("") || "<p>لا توجد ثغرات مكتشفة لهذا الجهاز.</p>";
 
   const exploitHtml = (d.exploitability_notes || [])
-    .map((n) => `<div class="exploit-note">${n}</div>`).join("");
+    .map((n) => `<div class="exploit-note">${esc(n)}</div>`).join("");
 
   const hostActivityHtml = (d.host_activity_notes || [])
-    .map((n) => `<div class="exploit-note">${n}</div>`).join("");
+    .map((n) => `<div class="exploit-note">${esc(n)}</div>`).join("");
 
   $("#modal-body").innerHTML = `
-    <h2>${d.hostname || "جهاز غير معروف"} ${d.is_unidentified ? '<span class="badge info">مجهول</span>' : ""}</h2>
-    ${d.identity_spoof_suspected ? `<div class="identity-alert">⚠ <b>اشتباه انتحال هوية:</b> ${d.identity_spoof_note}</div>` : ""}
-    <p><b>IP:</b> ${d.ip_address || "—"} &nbsp; <b>MAC:</b> ${d.mac_address || "—"} &nbsp; <b>الشركة:</b> ${d.vendor || "—"}</p>
-    <p><b>النوع:</b> ${d.device_type} &nbsp; <b>وسيلة الاتصال:</b> ${d.connection_medium}</p>
+    <h2>${esc(d.hostname) || "جهاز غير معروف"} ${d.is_unidentified ? '<span class="badge info">مجهول</span>' : ""}</h2>
+    ${d.identity_spoof_suspected ? `<div class="identity-alert">⚠ <b>اشتباه انتحال هوية:</b> ${esc(d.identity_spoof_note)}</div>` : ""}
+    <p><b>IP:</b> ${esc(d.ip_address) || "—"} &nbsp; <b>MAC:</b> ${esc(d.mac_address) || "—"} &nbsp; <b>الشركة:</b> ${esc(d.vendor) || "—"}</p>
+    <p><b>النوع:</b> ${esc(d.device_type)} &nbsp; <b>وسيلة الاتصال:</b> ${esc(d.connection_medium)}</p>
     <p><b>احتمالية الوصول:</b> ${d.access_likelihood_score.toFixed(0)}% &nbsp;
        <b>الضرر المحتمل:</b> ${d.potential_damage_score.toFixed(0)}%</p>
     <p><b>محاولات فاشلة:</b> ${d.failed_connection_attempts} &nbsp;
@@ -137,7 +151,7 @@ async function openDevice(id) {
     ${d.unusual_data_transfer_detected ? `<p>🔴 <b>رُصد نقل بيانات غير معتاد من جهاز النظام</b></p>` : ""}
     ${hostActivityHtml}
     <h3>المنافذ المفتوحة</h3>
-    <ul>${(d.open_ports || []).map((p) => `<li>${p.port}/${p.protocol} — ${p.service || "غير معروف"}</li>`).join("") || "<li>لا توجد منافذ مفتوحة مكتشفة</li>"}</ul>
+    <ul>${(d.open_ports || []).map((p) => `<li>${esc(p.port)}/${esc(p.protocol)} — ${esc(p.service) || "غير معروف"}</li>`).join("") || "<li>لا توجد منافذ مفتوحة مكتشفة</li>"}</ul>
     ${exploitHtml ? `<h3>ملاحظات قابلية الاستغلال</h3>${exploitHtml}` : ""}
     <h3>الثغرات</h3>
     ${vulnsHtml}
@@ -154,9 +168,9 @@ async function loadLicenses() {
     const licenses = await api("/api/licenses");
     $("#lic-list").innerHTML = licenses.map((l) => `
       <div class="lic-row">
-        <b>${l.customer_name}</b> — ${l.customer_email}
+        <b>${esc(l.customer_name)}</b> — ${esc(l.customer_email)}
         <div class="meta">
-          الأجهزة: ${l.activated_agents_count}/${l.max_agents} &nbsp;|&nbsp;
+          الأجهزة: ${esc(l.activated_agents_count)}/${esc(l.max_agents)} &nbsp;|&nbsp;
           ينتهي: ${l.expires_at ? new Date(l.expires_at).toLocaleString("ar") : "بلا انتهاء"}
           ${l.revoked ? ' &nbsp;<span class="badge critical">ملغى</span>' : ""}
         </div>
@@ -190,6 +204,37 @@ $("#licenses-btn").addEventListener("click", () => {
 });
 $("#licenses-close").addEventListener("click", () => $("#licenses-modal").classList.add("hidden"));
 $("#lic-issue-btn").addEventListener("click", issueLicense);
+$("#lic-duration-unit").addEventListener("change", () => {
+  $("#lic-duration-count").disabled = $("#lic-duration-unit").value === "lifetime";
+});
+
+async function changePassword() {
+  const current_password = $("#pwd-current").value;
+  const new_password = $("#pwd-new").value;
+  const confirm = $("#pwd-confirm").value;
+  $("#pwd-result").textContent = "";
+  if (new_password !== confirm) {
+    $("#pwd-result").textContent = "كلمة المرور الجديدة وتأكيدها غير متطابقين.";
+    return;
+  }
+  try {
+    await api("/api/auth/change-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ current_password, new_password }),
+    });
+    $("#pwd-result").textContent = "تم تغيير كلمة المرور بنجاح.";
+    $("#pwd-current").value = "";
+    $("#pwd-new").value = "";
+    $("#pwd-confirm").value = "";
+  } catch (e) {
+    $("#pwd-result").textContent = "فشل تغيير كلمة المرور - تحقق من كلمة المرور الحالية.";
+  }
+}
+
+$("#change-password-btn").addEventListener("click", () => $("#password-modal").classList.remove("hidden"));
+$("#password-close").addEventListener("click", () => $("#password-modal").classList.add("hidden"));
+$("#pwd-save-btn").addEventListener("click", changePassword);
 
 $("#login-btn").addEventListener("click", login);
 $("#password").addEventListener("keydown", (e) => { if (e.key === "Enter") login(); });

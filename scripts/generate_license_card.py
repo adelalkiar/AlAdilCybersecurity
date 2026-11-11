@@ -87,16 +87,22 @@ def build_card_image(
     label_font = _font(FONT_REGULAR, 22)
     value_font = _font(FONT_BOLD, 26)
 
-    duration_ar = DURATION_LABELS_AR.get(duration_unit, duration_unit)
-    try:
-        expires_display = datetime.fromisoformat(expires_at.rstrip("Z")).strftime("%Y-%m-%d %H:%M")
-    except ValueError:
-        expires_display = expires_at
+    is_lifetime = duration_unit == "lifetime"
+    duration_display = "مدى الحياة" if is_lifetime else (
+        f"{duration_count} {DURATION_LABELS_AR.get(duration_unit, duration_unit)}"
+    )
+    if is_lifetime or not expires_at:
+        expires_display = "بلا انتهاء"
+    else:
+        try:
+            expires_display = datetime.fromisoformat(expires_at.rstrip("Z")).strftime("%Y-%m-%d %H:%M")
+        except ValueError:
+            expires_display = expires_at
 
     rows = [
         ("صادرة إلى", customer_name),
         ("إصدار النظام", f"AlAdil Cybersecurity v{version}"),
-        ("مدة الصلاحية", f"{duration_count} {duration_ar}"),
+        ("مدة الصلاحية", duration_display),
         ("تاريخ الانتهاء", expires_display),
     ]
 
@@ -134,11 +140,18 @@ def build_message_text(
     version: str,
     server_url: str = "",
 ) -> str:
-    duration_ar = DURATION_LABELS_AR.get(duration_unit, duration_unit)
-    try:
-        expires_display = datetime.fromisoformat(expires_at.rstrip("Z")).strftime("%Y-%m-%d %H:%M")
-    except ValueError:
-        expires_display = expires_at
+    is_lifetime = duration_unit == "lifetime"
+    duration_display = "مدى الحياة" if is_lifetime else (
+        f"{duration_count} {DURATION_LABELS_AR.get(duration_unit, duration_unit)}"
+    )
+    if is_lifetime or not expires_at:
+        duration_line = f"⏳ مدة الصلاحية: {duration_display} (بلا تاريخ انتهاء)"
+    else:
+        try:
+            expires_display = datetime.fromisoformat(expires_at.rstrip("Z")).strftime("%Y-%m-%d %H:%M")
+        except ValueError:
+            expires_display = expires_at
+        duration_line = f"⏳ مدة الصلاحية: {duration_display} (ينتهي في {expires_display})"
 
     lines = [
         f"مرحبًا {customer_name}،",
@@ -147,7 +160,7 @@ def build_message_text(
         "الأجهزة المتصلة بشبكتك وكشف التهديدات تلقائيًا.",
         "",
         f"🔑 رمز التفعيل: {license_key}",
-        f"⏳ مدة الصلاحية: {duration_count} {duration_ar} (ينتهي في {expires_display})",
+        duration_line,
         "",
         "لتثبيت النظام: شغّل ملف التثبيت المرفق وأدخل رمز التفعيل أعلاه عند الطلب.",
     ]

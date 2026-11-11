@@ -34,6 +34,13 @@ import zipfile
 from datetime import datetime
 from pathlib import Path
 
+# يضمن أن الطرفية على ويندوز (ترميز cp1252 الافتراضي) تستطيع طباعة
+# النصوص العربية والرموز التعبيرية في رسائل هذا السكربت دون فشل الإقلاع
+# (UnicodeEncodeError) - نفس الإصلاح المطبَّق في نقاط الدخول الأخرى.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))  # للسماح باستيراد server.app.services.license_service مباشرة
 
@@ -122,11 +129,14 @@ def issue_license_for_release(
     from server.app.services.license_service import generate_license_key, verify_license_key
     from scripts.generate_license_card import build_card_image, build_message_text
 
+    is_lifetime = duration_unit == "lifetime"
     license_key = generate_license_key(
-        customer_name, customer_email, max_agents, duration_unit, duration_count
+        customer_name, customer_email, max_agents,
+        duration_unit=None if is_lifetime else duration_unit,
+        duration_count=duration_count,
     )
     payload = verify_license_key(license_key)  # لاستخراج expires_at المحسوبة فعليًا
-    expires_at = payload["expires_at"] if payload else ""
+    expires_at = (payload or {}).get("expires_at") or ""
 
     safe_name = "".join(c if c.isalnum() else "_" for c in customer_name)[:40]
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
@@ -176,7 +186,7 @@ def main() -> None:
     parser.add_argument("--customer-name", default=None, help="يُصدر ترخيصًا لهذا العميل مع البناء")
     parser.add_argument("--customer-email", default=None)
     parser.add_argument("--duration-unit", default="day",
-                         choices=["minute", "hour", "day", "week", "month", "year"])
+                         choices=["minute", "hour", "day", "week", "month", "year", "lifetime"])
     parser.add_argument("--duration-count", type=int, default=365)
     parser.add_argument("--max-agents", type=int, default=1)
     parser.add_argument("--server-url", default="http://localhost:8000",

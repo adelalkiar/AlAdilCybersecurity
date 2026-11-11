@@ -22,8 +22,10 @@ router = APIRouter(prefix="/api/licenses", tags=["licenses"])
 
 @router.get("/duration-units")
 def list_duration_units():
-    """الوحدات الزمنية المتاحة لواجهة النظام عند إصدار ترخيص جديد."""
-    return {"units": list(DURATION_UNIT_SECONDS.keys())}
+    """الوحدات الزمنية المتاحة لواجهة النظام عند إصدار ترخيص جديد - تتضمن
+    "lifetime" (مدى الحياة: بلا تاريخ انتهاء إطلاقًا) إلى جانب الوحدات
+    الزمنية المحدودة."""
+    return {"units": [*DURATION_UNIT_SECONDS.keys(), "lifetime"]}
 
 
 @router.post("")
@@ -39,27 +41,35 @@ def issue_license(
     if not current_user.is_admin:
         raise HTTPException(403, "صلاحية مشرف مطلوبة لإصدار تراخيص")
 
-    try:
-        expires_delta = duration_to_timedelta(duration_unit, duration_count)
-    except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
+    is_lifetime = duration_unit == "lifetime"
+    if is_lifetime:
+        expires_at = None
+        key = generate_license_key(
+            customer_name, customer_email, max_agents, duration_unit=None
+        )
+    else:
+        try:
+            expires_delta = duration_to_timedelta(duration_unit, duration_count)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        expires_at = datetime.utcnow() + expires_delta
+        key = generate_license_key(
+            customer_name, customer_email, max_agents, duration_unit, duration_count
+        )
 
-    key = generate_license_key(
-        customer_name, customer_email, max_agents, duration_unit, duration_count
-    )
     record = License(
         license_key=key,
         customer_name=customer_name,
         customer_email=customer_email,
         max_agents=max_agents,
-        expires_at=datetime.utcnow() + expires_delta,
+        expires_at=expires_at,
     )
     db.add(record)
     db.commit()
     return {
         "license_key": key,
-        "expires_at": record.expires_at.isoformat(),
-        "duration": f"{duration_count} {duration_unit}",
+        "expires_at": expires_at.isoformat() if expires_at else None,
+        "duration": "مدى الحياة" if is_lifetime else f"{duration_count} {duration_unit}",
     }
 
 
