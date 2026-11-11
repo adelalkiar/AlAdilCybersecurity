@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AlAdil Cybersecurity — لوحة التحكم</title>
+<link rel="icon" href="/static/branding/logo-fill.png" />
+<link rel="stylesheet" href="/static/dashboard/styles.css" />
+</head>
+<body>
+  <div id="login-screen" class="screen">
+    <div class="login-card">
+      <img src="/static/branding/logo-outline.png" alt="AlAdil" class="login-logo" />
+      <h1>AlAdil Cybersecurity</h1>
+      <p class="subtitle">نظام مراقبة الأجهزة المتصلة وكشف التهديدات</p>
+      <input id="username" type="text" placeholder="اسم المستخدم" />
+      <input id="password" type="password" placeholder="كلمة المرور" />
+      <button id="login-btn">تسجيل الدخول</button>
+      <p id="login-error" class="error"></p>
+    </div>
+  </div>
+
+  <div id="app-screen" class="screen hidden">
+    <header class="topbar">
+      <div class="brand">
+        <img src="/static/branding/logo-fill.png" alt="AlAdil" />
+        <span>AlAdil Cybersecurity</span>
+      </div>
+      <div class="filters">
+        <select id="filter-threat">
+          <option value="">كل مستويات الخطورة</option>
+          <option value="critical">حرج</option>
+          <option value="high">مرتفع</option>
+          <option value="medium">متوسط</option>
+          <option value="low">منخفض</option>
+          <option value="info">معلومة</option>
+        </select>
+        <select id="filter-intruder">
+          <option value="">كل حالات التسلل</option>
+          <option value="active_threat">تهديد نشط</option>
+          <option value="dormant_ineffective">محاولات غير فعّالة</option>
+          <option value="blocked">محظور</option>
+          <option value="none">لا يوجد</option>
+        </select>
+        <label class="checkbox-filter">
+          <input type="checkbox" id="filter-unidentified" /> أجهزة مجهولة فقط
+        </label>
+        <label class="checkbox-filter">
+          <input type="checkbox" id="filter-spoof" /> اشتباه انتحال هوية
+        </label>
+        <button id="refresh-btn">تحديث</button>
+        <button id="licenses-btn">التراخيص</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="summary-cards" id="summary-cards"></section>
+      <section class="device-table-wrap">
+        <table class="device-table">
+          <thead>
+            <tr>
+              <th>الخطورة</th>
+              <th>الجهاز</th>
+              <th>IP</th>
+              <th>MAC / الشركة المصنّعة</th>
+              <th>وسيلة الاتصال</th>
+              <th>احتمالية الوصول</th>
+              <th>الضرر المحتمل</th>
+              <th>حالة التسلل</th>
+              <th>آخر ظهور</th>
+            </tr>
+          </thead>
+          <tbody id="device-rows"></tbody>
+        </table>
+      </section>
+    </main>
+
+    <div id="device-modal" class="modal hidden">
+      <div class="modal-content">
+        <button class="modal-close" id="modal-close">×</button>
+        <div id="modal-body"></div>
+      </div>
+    </div>
+
+    <div id="licenses-modal" class="modal hidden">
+      <div class="modal-content">
+        <button class="modal-close" id="licenses-close">×</button>
+        <h2>إصدار ترخيص جديد</h2>
+        <div class="license-form">
+          <input id="lic-customer-name" type="text" placeholder="اسم العميل" />
+          <input id="lic-customer-email" type="email" placeholder="بريد العميل الإلكتروني" />
+          <input id="lic-max-agents" type="number" min="1" value="1" placeholder="عدد الأجهزة المسموح بها" />
+          <div class="license-duration-row">
+            <input id="lic-duration-count" type="number" min="1" value="1" />
+            <select id="lic-duration-unit">
+              <option value="minute">دقيقة</option>
+              <option value="hour">ساعة</option>
+              <option value="day" selected>يوم</option>
+              <option value="week">أسبوع</option>
+              <option value="month">شهر</option>
+              <option value="year">سنة</option>
+            </select>
+          </div>
+          <button id="lic-issue-btn">إصدار الترخيص</button>
+          <p id="lic-result"></p>
+        </div>
+        <h3>التراخيص الصادرة</h3>
+        <div id="lic-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/dashboard/app.js"></script>
+</body>
+</html>

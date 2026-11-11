@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+dist/
+build/
+*.spec
+data/
+.env
+.aladil/
+installers/windows/*.ico
+installers/windows/redist/nssm.exe
+releases/
+*.log
+.claude/

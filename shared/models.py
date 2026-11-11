@@ -1,0 +1,141 @@
+"""
+نماذج بيانات مشتركة بين الخادم المركزي (server) والعميل (agent).
+تُستخدم Pydantic لضمان التحقق من صحة البيانات وتوحيد الشكل بين كل المكونات.
+"""
+from __future__ import annotations
+
+from datetime import datetime
+from enum import Enum
+from typing import Optional
+
+from pydantic import BaseModel, Field, IPvAnyAddress
+
+
+class DeviceType(str, Enum):
+    ROUTER = "router"
+    COMPUTER = "computer"
+    MOBILE = "mobile"
+    IOT = "iot"
+    PRINTER = "printer"
+    CAMERA = "camera"
+    BLUETOOTH_PERIPHERAL = "bluetooth_peripheral"
+    UNKNOWN = "unknown"
+
+
+class ConnectionMedium(str, Enum):
+    ETHERNET = "ethernet"
+    WIFI = "wifi"
+    BLUETOOTH = "bluetooth"
+    EXTERNAL = "external"  # نطاق/عنوان خارجي أدخله المستخدم يدويًا
+
+
+class ThreatLevel(str, Enum):
+    CRITICAL = "critical"
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+    INFO = "info"
+
+
+class IntruderStatus(str, Enum):
+    """تصنيف محاولات الوصول غير المصرح بها."""
+    NONE = "none"
+    ACTIVE_THREAT = "active_threat"          # اتصال ناجح + سلوك مشبوه مستمر
+    DORMANT_INEFFECTIVE = "dormant_ineffective"  # محاولات فاشلة متكررة دون نجاح فعلي
+    BLOCKED = "blocked"
+
+
+class OpenPort(BaseModel):
+    port: int
+    protocol: str = "tcp"
+    service: Optional[str] = None
+    product: Optional[str] = None
+    version: Optional[str] = None
+    banner: Optional[str] = None
+
+
+class Vulnerability(BaseModel):
+    cve_id: Optional[str] = None
+    title: str
+    description: str = ""
+    cvss_score: Optional[float] = None
+    severity: ThreatLevel = ThreatLevel.INFO
+    affected_port: Optional[int] = None
+    affected_product: Optional[str] = None
+    recommended_fix: str = ""
+    source: str = "nvd"          # nvd | manual | community
+    added_by_user: bool = False  # حل أضافه المستخدم يدويًا بعد بحثه الخاص
+    discovered_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class DeviceFingerprint(BaseModel):
+    mac_address: Optional[str] = None
+    vendor: Optional[str] = None       # من OUI الخاص بعنوان MAC
+    os_guess: Optional[str] = None
+    hostname: Optional[str] = None
+    ttl_observed: Optional[int] = None
+
+
+class ScannedDevice(BaseModel):
+    ip_address: Optional[str] = None
+    fingerprint: DeviceFingerprint = Field(default_factory=DeviceFingerprint)
+    device_type: DeviceType = DeviceType.UNKNOWN
+    connection_medium: ConnectionMedium = ConnectionMedium.ETHERNET
+    first_seen: datetime = Field(default_factory=datetime.utcnow)
+    last_seen: datetime = Field(default_factory=datetime.utcnow)
+    open_ports: list[OpenPort] = Field(default_factory=list)
+    vulnerabilities: list[Vulnerability] = Field(default_factory=list)
+    signal_strength_dbm: Optional[int] = None  # لـ Wi-Fi / Bluetooth
+
+    # نتائج تحليل المخاطر (تُحسب في server/app/services/risk_service.py)
+    access_likelihood_score: float = 0.0   # 0-100: احتمالية الوصول/التأثير
+    potential_damage_score: float = 0.0    # 0-100: حجم الضرر المحتمل
+    overall_threat_level: ThreatLevel = ThreatLevel.INFO
+    intruder_status: IntruderStatus = IntruderStatus.NONE
+    failed_connection_attempts: int = 0
+    successful_connection_attempts: int = 0
+
+    # هل هذا جهاز "مجهول" (لا اسم مضيف، لا شركة مصنّعة معروفة، لا نوع
+    # محدَّد) - يُحسب في shared/vuln_db/risk_scoring.py لتسهيل التصفية
+    # في الواجهة على "الأجهزة غير المعرَّفة" تحديدًا.
+    is_unidentified: bool = False
+    # ملاحظات وصفية عن قابلية استغلال الجهاز بناءً على المنافذ/الثغرات
+    # المكتشفة فعليًا (تقييم مخاطر، وليست أداة استغلال فعلية)
+    exploitability_notes: list[str] = Field(default_factory=list)
+
+    # تحقّق هوية الجهاز: هل اسم المضيف المُعلَن يتطابق مع ما سبق رصده
+    # لنفس عنوان MAC، أم أن جهازًا جديدًا بدأ فجأة يستخدم اسمًا كان
+    # يستخدمه جهاز آخر موثوق سابقًا؟ (كشف انتحال هوية/اسم)
+    identity_spoof_suspected: bool = False
+    identity_spoof_note: Optional[str] = None
+
+    # سلوك هذا الجهاز تجاه جهاز النظام نفسه (الجهاز الذي يعمل عليه
+    # العميل) - يُحسب في agent/app/discovery/host_activity.py
+    accessed_host_system: bool = False
+    unusual_data_transfer_detected: bool = False
+    host_activity_notes: list[str] = Field(default_factory=list)
+
+
+class ScanTarget(BaseModel):
+    """نطاق فحص يدخله المستخدم يدويًا (شبكة محلية أو خارجية)."""
+    cidr_or_host: str
+    medium: ConnectionMedium = ConnectionMedium.EXTERNAL
+    authorized_by_user: bool = False
+    authorization_note: Optional[str] = None
+
+
+class ScanReport(BaseModel):
+    agent_id: str
+    started_at: datetime
+    finished_at: datetime
+    target: ScanTarget
+    devices: list[ScannedDevice] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
+
+
+class AgentInfo(BaseModel):
+    agent_id: str
+    hostname: str
+    platform: str
+    version: str
+    license_key: str
