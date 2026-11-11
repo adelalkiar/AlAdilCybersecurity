@@ -5,6 +5,8 @@
 """
 from __future__ import annotations
 
+import hashlib
+
 from fastapi import APIRouter, Header, HTTPException
 from sqlalchemy.orm import Session
 
@@ -14,6 +16,10 @@ from server.app.services.license_service import verify_license_key
 from shared.models import ScanReport
 
 router = APIRouter(prefix="/api/scans", tags=["scans"])
+
+
+def _hash_license_key(license_key: str) -> str:
+    return hashlib.sha256(license_key.encode("utf-8")).hexdigest()
 
 
 def _authenticate_agent(x_license_key: str | None) -> dict:
@@ -30,18 +36,39 @@ def submit_scan_report(
     report: ScanReport,
     x_license_key: str | None = Header(default=None),
 ):
-    _authenticate_agent(x_license_key)
+    payload = _authenticate_agent(x_license_key)
+    license_hash = _hash_license_key(x_license_key)
 
     db: Session = SessionLocal()
     try:
         agent = db.query(Agent).filter(Agent.id == report.agent_id).first()
-        if not agent:
+        if agent:
+            # هذا agent_id مسجَّل مسبقًا - لا نسمح بتحديث بياناته إلا بنفس
+            # مفتاح الترخيص الذي أُنشئ به أصلًا، وإلا يمكن لأي مفتاح ترخيص
+            # صالح آخر (حتى لعميل مختلف تمامًا) الكتابة فوق بيانات جهازه
+            if agent.license_key_hash != license_hash:
+                raise HTTPException(
+                    403, "معرّف العميل (agent_id) هذا مرتبط بترخيص مختلف"
+                )
+        else:
+            # عميل جديد تمامًا: نتحقق من عدم تجاوز الحد الأقصى لعدد الأجهزة
+            # (max_agents) المسموح به ضمن هذا الترخيص قبل تسجيله
+            max_agents = payload.get("max_agents", 1)
+            current_count = (
+                db.query(Agent).filter(Agent.license_key_hash == license_hash).count()
+            )
+            if current_count >= max_agents:
+                raise HTTPException(
+                    403,
+                    f"تم بلوغ الحد الأقصى لعدد الأجهزة ({max_agents}) المسموح به لهذا الترخيص",
+                )
             agent = Agent(
                 id=report.agent_id,
                 hostname="unknown",
                 platform="unknown",
                 version="unknown",
                 license_key=x_license_key or "",
+                license_key_hash=license_hash,
             )
             db.add(agent)
         agent.last_seen = report.finished_at

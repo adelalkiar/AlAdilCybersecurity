@@ -15,8 +15,10 @@ from sqlalchemy.types import TypeDecorator
 
 from server.app.core.config import settings
 
-_KEY_PATH = Path(settings.database_url.split("///")[-1]).parent / "db_encryption.key" \
-    if settings.database_url.startswith("sqlite") else Path("./data/db_encryption.key")
+# عمدًا خارج مجلد data/ الذي يحوي ملف قاعدة البيانات نفسه: تخزين مفتاح
+# التشفير بجانب البيانات المشفَّرة يُفرغ نموذج الحماية من معناه (أي نسخة
+# احتياطية أو تسريب لمجلد data/ بالكامل يمنح المهاجم المفتاح والبيانات معًا).
+_KEY_PATH = Path("./secrets/db_encryption.key")
 
 
 def _load_or_create_key() -> bytes:

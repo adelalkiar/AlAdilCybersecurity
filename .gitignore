@@ -6,6 +6,7 @@ dist/
 build/
 *.spec
 data/
+secrets/
 .env
 .aladil/
 installers/windows/*.ico

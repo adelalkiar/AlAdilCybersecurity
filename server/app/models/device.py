@@ -23,6 +23,10 @@ class Agent(Base):
     platform: Mapped[str] = mapped_column(String(64))
     version: Mapped[str] = mapped_column(String(32))
     license_key: Mapped[str] = mapped_column(EncryptedString(2048))  # مشفَّر عند السكون
+    # بصمة SHA-256 غير قابلة للعكس من مفتاح الترخيص، تُستخدم للمطابقة/العدّ
+    # في استعلامات SQL (تشفير Fernet غير حتمي - IV عشوائي في كل مرة - فلا
+    # يمكن مطابقة license_key المشفَّر مباشرة ضمن WHERE بشكل موثوق)
+    license_key_hash: Mapped[str] = mapped_column(String(64), index=True, default="")
     first_seen: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last_seen: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
