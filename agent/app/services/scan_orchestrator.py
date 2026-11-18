@@ -18,6 +18,7 @@ from agent.app.discovery.host_activity import annotate_host_activity
 from agent.app.discovery.mdns import mdns_scan
 from agent.app.discovery.network import arp_scan, discover_local_subnets
 from agent.app.discovery.portscan import scan_many_hosts_ports
+from agent.app.discovery.unsigned_programs import scan_unsigned_programs
 from agent.app.discovery.wifi import wifi_scan
 from shared.authorization_gate import AuthorizationRequiredError, ensure_authorized
 from shared.models import ConnectionMedium, ScanReport, ScanTarget, ScannedDevice
@@ -175,11 +176,22 @@ async def run_full_scan(
         mdns_scan(config.mdns_duration),
         wifi_scan(),
         bluetooth_scan(config.bluetooth_duration),
+        scan_unsigned_programs(),
         return_exceptions=True,
     )
 
+    # scan_unsigned_programs() هو آخر عنصر دائمًا في القائمة أعلاه، ونتيجته
+    # ليست من نوع ScannedDevice فنستبعدها من دمج الأجهزة ونتعامل معها أولًا
+    unsigned_result = results[-1]
+    unsigned_findings: list = []
+    if isinstance(unsigned_result, Exception):
+        errors.append(str(unsigned_result))
+        logger.exception("خطأ أثناء فحص البرامج غير الموقَّعة", exc_info=unsigned_result)
+    elif isinstance(unsigned_result, list):
+        unsigned_findings = unsigned_result
+
     device_groups: list[list[ScannedDevice]] = []
-    for result in results:
+    for result in results[:-1]:
         if isinstance(result, Exception):
             errors.append(str(result))
             logger.exception("خطأ أثناء أحد مسارات الاكتشاف المتوازية", exc_info=result)
@@ -208,4 +220,5 @@ async def run_full_scan(
         target=primary_target,
         devices=all_devices,
         errors=errors,
+        unsigned_program_findings=unsigned_findings,
     )

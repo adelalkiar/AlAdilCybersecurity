@@ -72,6 +72,11 @@ def submit_scan_report(
             )
             db.add(agent)
         agent.last_seen = report.finished_at
+        # فحص "البرامج غير الموقَّعة/المتخفّية" على جهاز الوكيل نفسه - نستبدل
+        # النتائج بالكامل في كل دورة (آخر فحص فقط)، تمامًا مثل ثغرات الأجهزة
+        agent.unsigned_program_findings_json = [
+            f.model_dump(mode="json") for f in report.unsigned_program_findings
+        ]
 
         for scanned in report.devices:
             device = (

@@ -171,6 +171,9 @@ main { padding: 24px; }
 .badge.medium { background: var(--medium); color: #3a2f00; }
 .badge.low { background: var(--low); }
 .badge.info { background: var(--info); }
+.badge.danger { background: var(--critical); }
+.badge.suspect { background: var(--high); }
+.badge.review { background: var(--info); }
 
 .badge.intruder-active_threat { background: var(--critical); }
 .badge.intruder-dormant_ineffective { background: #B8BDC7; color: #30343d; }
@@ -238,3 +241,21 @@ main { padding: 24px; }
   font-size: 13px;
 }
 .lic-row .meta { color: #6b7488; font-size: 12px; }
+.lic-row button {
+  margin-top: 6px;
+  margin-inline-end: 6px;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.hint { color: #6b7488; font-size: 12.5px; line-height: 1.6; margin: 4px 0 14px; }
+.vuln-item code {
+  background: #f0f1f4;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 12px;
+  word-break: break-all;
+}

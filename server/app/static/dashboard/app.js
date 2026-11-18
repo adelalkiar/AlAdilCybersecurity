@@ -236,6 +236,122 @@ $("#change-password-btn").addEventListener("click", () => $("#password-modal").c
 $("#password-close").addEventListener("click", () => $("#password-modal").classList.add("hidden"));
 $("#pwd-save-btn").addEventListener("click", changePassword);
 
+const LEVEL_LABELS = { danger: "خطير", suspect: "مشبوه", review: "للمراجعة" };
+
+function renderFinding(f) {
+  const connectionsHtml = (f.processes || []).flatMap((p) => p.connections || []).map((c) => `
+    <li>${esc(c.ra)}:${esc(c.rp)}</li>
+  `).join("");
+  const launchersHtml = (f.launchers || []).map((l) => `
+    <li>${esc(l.type === "task" ? "مهمة مجدولة" : "تشغيل تلقائي")}: ${esc(l.name)}${l.hidden ? " (مخفية)" : ""}${l.level ? ` — صلاحية: ${esc(l.level)}` : ""}</li>
+  `).join("");
+  const processesHtml = (f.processes || []).map((p) => `
+    <li>PID ${esc(p.pid)} — ${esc(p.name)}${p.cmd ? ` — <code>${esc(p.cmd)}</code>` : ""}</li>
+  `).join("");
+  return `
+    <div class="vuln-item">
+      <h4>
+        <span class="badge ${esc(f.level)}">${esc(LEVEL_LABELS[f.level] || f.level)} (${esc(f.score)}/100)</span>
+        ${esc(f.display_name)}
+      </h4>
+      <p><b>المسار:</b> ${esc(f.path)}</p>
+      <p><b>التوقيع:</b> ${esc(f.signature_status) || "—"} ${f.signer ? `— ${esc(f.signer)}` : ""}</p>
+      ${f.company || f.product || f.description ? `<p><b>الشركة/المنتج:</b> ${esc(f.company)} ${esc(f.product)} ${esc(f.description)}</p>` : ""}
+      ${f.owner ? `<p><b>مالك الملف:</b> ${esc(f.owner)}</p>` : ""}
+      ${f.sha256 ? `<p><b>SHA-256:</b> <code>${esc(f.sha256)}</code></p>` : ""}
+      ${f.zone_name ? `<p><b>مصدر التنزيل:</b> ${esc(f.zone_name)}${f.zone_host_url ? ` — ${esc(f.zone_host_url)}` : ""}</p>` : ""}
+      ${f.created || f.modified ? `<p><b>تاريخ الإنشاء/التعديل:</b> ${esc(f.created)} / ${esc(f.modified)}</p>` : ""}
+      ${f.has_encrypted_sibling ? `<p>⚠ يوجد ملف مجاور يبدو مشفَّرًا (حمولة مخفية محتملة)</p>` : ""}
+      ${f.urls && f.urls.length ? `<p><b>روابط مضمَّنة:</b> ${f.urls.map(esc).join("، ")}</p>` : ""}
+      ${f.ips && f.ips.length ? `<p><b>عناوين IP مضمَّنة:</b> ${f.ips.map(esc).join("، ")}</p>` : ""}
+      ${launchersHtml ? `<p><b>مصدر التشغيل:</b></p><ul>${launchersHtml}</ul>` : ""}
+      ${processesHtml ? `<p><b>العمليات الحالية:</b></p><ul>${processesHtml}</ul>` : ""}
+      ${connectionsHtml ? `<p><b>اتصالات شبكية:</b></p><ul>${connectionsHtml}</ul>` : ""}
+      <p><b>الأسباب:</b></p>
+      <ul>${(f.reasons || []).map((r) => `<li>${esc(r)}</li>`).join("")}</ul>
+    </div>
+  `;
+}
+
+async function loadHostScan() {
+  $("#host-scan-list").innerHTML = "<p>جارٍ التحميل...</p>";
+  try {
+    const agentsList = await api("/api/agents");
+    const allFindings = agentsList.flatMap((a) =>
+      (a.unsigned_program_findings || []).map((f) => ({ ...f, _agent: a.hostname || a.id }))
+    );
+    if (!allFindings.length) {
+      $("#host-scan-list").innerHTML = "<p>لا توجد نتائج بعد - ستظهر هنا بعد أول دورة فحص من الوكيل.</p>";
+      return;
+    }
+    allFindings.sort((a, b) => b.score - a.score);
+    $("#host-scan-list").innerHTML = allFindings.map((f) => `
+      <p class="hint"><b>الجهاز:</b> ${esc(f._agent)}</p>
+      ${renderFinding(f)}
+    `).join("");
+  } catch (e) {
+    $("#host-scan-list").innerHTML = "<p>تعذّر تحميل النتائج.</p>";
+  }
+}
+
+$("#host-scan-btn").addEventListener("click", () => {
+  $("#host-scan-modal").classList.remove("hidden");
+  loadHostScan();
+});
+$("#host-scan-close").addEventListener("click", () => $("#host-scan-modal").classList.add("hidden"));
+
+async function loadTrustedNetworks() {
+  try {
+    const entries = await api("/api/trusted-networks");
+    $("#tn-list").innerHTML = entries.map((e) => `
+      <div class="lic-row">
+        <b>${esc(e.label)}</b> — ${esc(e.cidr_or_host)}
+        <div class="meta">${esc(e.note)}</div>
+        <button class="tn-cmd-btn" data-cidr="${esc(e.cidr_or_host)}">أمر جدار الحماية النموذجي</button>
+        <button class="tn-del-btn" data-id="${esc(e.id)}">حذف</button>
+      </div>
+    `).join("") || "<p>لا توجد شبكات موثوقة مضافة بعد.</p>";
+
+    document.querySelectorAll(".tn-del-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        await api(`/api/trusted-networks/${btn.dataset.id}`, { method: "DELETE" });
+        loadTrustedNetworks();
+      });
+    });
+    document.querySelectorAll(".tn-cmd-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const result = await api(`/api/trusted-networks/example-firewall-command?cidr_or_host=${encodeURIComponent(btn.dataset.cidr)}`);
+        alert(result.command + "\n\n" + result.note);
+      });
+    });
+  } catch (e) {
+    $("#tn-list").innerHTML = "<p>تعذّر تحميل القائمة.</p>";
+  }
+}
+
+async function addTrustedNetwork() {
+  const label = $("#tn-label").value.trim();
+  const cidr_or_host = $("#tn-cidr").value.trim();
+  const note = $("#tn-note").value.trim();
+  if (!label || !cidr_or_host) return;
+  await api("/api/trusted-networks", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ label, cidr_or_host, note }),
+  });
+  $("#tn-label").value = "";
+  $("#tn-cidr").value = "";
+  $("#tn-note").value = "";
+  loadTrustedNetworks();
+}
+
+$("#trusted-networks-btn").addEventListener("click", () => {
+  $("#trusted-networks-modal").classList.remove("hidden");
+  loadTrustedNetworks();
+});
+$("#trusted-networks-close").addEventListener("click", () => $("#trusted-networks-modal").classList.add("hidden"));
+$("#tn-add-btn").addEventListener("click", addTrustedNetwork);
+
 $("#login-btn").addEventListener("click", login);
 $("#password").addEventListener("keydown", (e) => { if (e.key === "Enter") login(); });
 $("#refresh-btn").addEventListener("click", loadDevices);

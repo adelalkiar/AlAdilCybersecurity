@@ -116,6 +116,37 @@ class ScannedDevice(BaseModel):
     host_activity_notes: list[str] = Field(default_factory=list)
 
 
+class UnsignedProgramFinding(BaseModel):
+    """
+    نتيجة فحص "البرامج غير الموقَّعة والمتخفّية" على جهاز النظام نفسه
+    (وليس على جهاز بعيد على الشبكة) - قراءة واكتشاف فقط، بلا أي احتواء
+    أو تعديل تلقائي. انظر .claude/skills/unsigned-program-detection/
+    SKILL.md للمنهجية الكاملة التي يستند إليها هذا النموذج.
+    """
+    path: str
+    display_name: str
+    score: int = 0
+    level: str = "review"  # danger | suspect | review
+    reasons: list[str] = Field(default_factory=list)
+    signature_status: Optional[str] = None
+    signer: Optional[str] = None
+    company: Optional[str] = None
+    product: Optional[str] = None
+    description: Optional[str] = None
+    owner: Optional[str] = None
+    created: Optional[str] = None
+    modified: Optional[str] = None
+    sha256: Optional[str] = None
+    zone_name: Optional[str] = None
+    zone_host_url: Optional[str] = None
+    indicators: list[str] = Field(default_factory=list)
+    urls: list[str] = Field(default_factory=list)
+    ips: list[str] = Field(default_factory=list)
+    has_encrypted_sibling: bool = False
+    launchers: list[dict] = Field(default_factory=list)
+    processes: list[dict] = Field(default_factory=list)
+
+
 class ScanTarget(BaseModel):
     """نطاق فحص يدخله المستخدم يدويًا (شبكة محلية أو خارجية)."""
     cidr_or_host: str
@@ -131,6 +162,9 @@ class ScanReport(BaseModel):
     target: ScanTarget
     devices: list[ScannedDevice] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
+    # فحص الجهاز المحلي نفسه (وليس الأجهزة الأخرى على الشبكة) بحثًا عن
+    # برامج غير موقَّعة أو متخفّية - قراءة فقط، بلا احتواء تلقائي
+    unsigned_program_findings: list[UnsignedProgramFinding] = Field(default_factory=list)
 
 
 class AgentInfo(BaseModel):

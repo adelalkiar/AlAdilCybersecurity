@@ -30,6 +30,10 @@ class Agent(Base):
     first_seen: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last_seen: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
+    # نتائج آخر فحص "برامج غير موقَّعة/متخفّية" على جهاز الوكيل نفسه (قراءة
+    # فقط - بلا احتواء تلقائي) - قائمة UnsignedProgramFinding مُسلسَلة JSON
+    unsigned_program_findings_json: Mapped[list] = mapped_column(JSON, default=list)
+
     devices: Mapped[list["Device"]] = relationship(back_populates="agent")
 
 

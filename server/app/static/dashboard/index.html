@@ -51,6 +51,8 @@
         <button id="refresh-btn">تحديث</button>
         <button id="licenses-btn">التراخيص</button>
         <button id="change-password-btn">كلمة المرور</button>
+        <button id="host-scan-btn">فحص الجهاز المحلي</button>
+        <button id="trusted-networks-btn">الشبكات الموثوقة</button>
       </div>
     </header>
 
@@ -122,6 +124,39 @@
           <button id="pwd-save-btn">حفظ كلمة المرور الجديدة</button>
           <p id="pwd-result"></p>
         </div>
+      </div>
+    </div>
+
+    <div id="host-scan-modal" class="modal hidden">
+      <div class="modal-content">
+        <button class="modal-close" id="host-scan-close">×</button>
+        <h2>فحص البرامج غير الموقَّعة والمتخفّية على جهاز النظام</h2>
+        <p class="hint">
+          فحص قراءة فقط - لا يوقف أي عملية ولا يحذف أي ملف ولا يرفع أي بيانات
+          لأي خدمة خارجية. كل نتيجة تُعرض بدرجتها وكل أسبابها كاملة لتقرر
+          بنفسك؛ لا يوجد هنا أي زر "إيقاف/عزل" تلقائي.
+        </p>
+        <div id="host-scan-list"></div>
+      </div>
+    </div>
+
+    <div id="trusted-networks-modal" class="modal hidden">
+      <div class="modal-content">
+        <button class="modal-close" id="trusted-networks-close">×</button>
+        <h2>الأجهزة/الشبكات الموثوقة</h2>
+        <p class="hint">
+          قائمة توثيقية فقط لمساعدتك على تذكّر شبكاتك الموثوقة (منزل/شركة).
+          هذا النظام <b>لا ينشئ ولا يعدّل أي قاعدة جدار حماية فعلية</b> على أي
+          جهاز - إن أردت إنشاء قاعدة سماح فعلية في جدار حماية ويندوز، استخدم
+          الأمر النموذجي الذي يظهر لك بعد الإضافة، ونفّذه بنفسك كمسؤول.
+        </p>
+        <div class="license-form">
+          <input id="tn-label" type="text" placeholder="تسمية (مثال: شبكة المنزل)" />
+          <input id="tn-cidr" type="text" placeholder="النطاق/العنوان (مثال: 192.168.10.0/24)" />
+          <input id="tn-note" type="text" placeholder="ملاحظة (اختياري)" />
+          <button id="tn-add-btn">إضافة</button>
+        </div>
+        <div id="tn-list"></div>
       </div>
     </div>
   </div>

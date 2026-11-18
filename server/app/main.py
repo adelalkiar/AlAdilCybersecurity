@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from server.app.api import auth, devices, licenses, scans
+from server.app.api import agents, auth, devices, licenses, scans, trusted_networks
 from server.app.core.config import settings
 from server.app.core.security import hash_password
 from server.app.db.database import SessionLocal, init_db
@@ -39,6 +39,8 @@ app.include_router(auth.router)
 app.include_router(devices.router)
 app.include_router(scans.router)
 app.include_router(licenses.router)
+app.include_router(agents.router)
+app.include_router(trusted_networks.router)
 
 
 @app.on_event("startup")

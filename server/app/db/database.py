@@ -32,6 +32,11 @@ def get_db():
 
 
 def init_db() -> None:
-    from server.app.models import device, license as license_models, user  # noqa: F401
+    from server.app.models import (  # noqa: F401
+        device,
+        license as license_models,
+        trusted_network,
+        user,
+    )
 
     Base.metadata.create_all(bind=engine)
