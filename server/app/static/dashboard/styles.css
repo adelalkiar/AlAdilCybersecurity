@@ -273,3 +273,30 @@ main { padding: 24px; }
   margin: 6px 0;
 }
 .vuln-item details summary { cursor: pointer; font-size: 12.5px; color: #6b7488; }
+
+/* ---------- لوحة الحالة الأمنية العامة ---------- */
+.posture-banner { padding: 16px 20px 0; }
+.posture-card {
+  border-radius: 12px;
+  padding: 16px 18px;
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(11, 31, 58, 0.12);
+}
+.posture-ok { background: linear-gradient(135deg, #0B1F3A, #0e6f5f); }
+.posture-high { background: linear-gradient(135deg, #0B1F3A, #b4451f); }
+.posture-critical { background: linear-gradient(135deg, #0B1F3A, #9c1324); }
+.posture-unknown { background: linear-gradient(135deg, #0B1F3A, #3a4560); }
+.posture-head { display: flex; align-items: center; gap: 12px; }
+.posture-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #fff; box-shadow: 0 0 0 4px rgba(255,255,255,0.25);
+  flex-shrink: 0;
+}
+.posture-title { font-size: 13px; opacity: 0.85; }
+.posture-label { font-size: 18px; font-weight: 700; }
+.posture-counters { display: flex; gap: 24px; margin: 14px 0 8px; flex-wrap: wrap; }
+.posture-counter { display: flex; flex-direction: column; }
+.posture-counter b { font-size: 22px; }
+.posture-counter span { font-size: 12px; opacity: 0.85; }
+.posture-actions { margin: 8px 0 0; padding-inline-start: 20px; font-size: 13px; line-height: 1.8; }
+.posture-clear { margin: 8px 0 0; font-size: 13px; opacity: 0.9; }

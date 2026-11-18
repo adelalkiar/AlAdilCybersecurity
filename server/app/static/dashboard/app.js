@@ -119,6 +119,76 @@ async function loadDevices() {
   } catch (e) {
     console.error(e);
   }
+  loadPosture();
+}
+
+// الحالة الأمنية العامة: تجمع كل مصادر الخطر (تهديدات الأجهزة + البرامج
+// المشبوهة على جهاز النظام + نقاط ضعف الإعدادات) في درجة صحّة واحدة وأهم
+// الإجراءات، لتعطي نظرة فورية بدل التنقّل بين الشاشات.
+async function loadPosture() {
+  let devices = [];
+  let agents = [];
+  try {
+    devices = await api("/api/devices");
+    agents = await api("/api/agents");
+  } catch (e) {
+    return;
+  }
+
+  const deviceCritical = devices.filter((d) => d.overall_threat_level === "critical").length;
+  const deviceHigh = devices.filter((d) => d.overall_threat_level === "high").length;
+  const activeThreats = devices.filter((d) => d.intruder_status === "active_threat").length;
+
+  const unsigned = agents.flatMap((a) => a.unsigned_program_findings || []);
+  const unsignedDanger = unsigned.filter((f) => f.level === "danger").length;
+  const unsignedSuspect = unsigned.filter((f) => f.level === "suspect").length;
+
+  const audit = agents.flatMap((a) => a.security_audit_findings || []);
+  const auditCritical = audit.filter((f) => f.severity === "critical" && f.status === "vulnerable").length;
+  const auditHigh = audit.filter((f) => f.severity === "high" && f.status === "vulnerable").length;
+
+  const criticalTotal = deviceCritical + unsignedDanger + auditCritical;
+  const highTotal = deviceHigh + unsignedSuspect + auditHigh;
+
+  let level, label, cls;
+  if (criticalTotal > 0) {
+    level = "critical"; label = "حرج — يتطلب إجراءً فوريًا"; cls = "posture-critical";
+  } else if (highTotal > 0) {
+    level = "high"; label = "يحتاج انتباهًا"; cls = "posture-high";
+  } else if (!agents.length && !devices.length) {
+    level = "unknown"; label = "بانتظار أول دورة فحص"; cls = "posture-unknown";
+  } else {
+    level = "ok"; label = "جيد — لا تهديدات حرجة"; cls = "posture-ok";
+  }
+
+  const actions = [];
+  if (auditCritical || auditHigh) actions.push(`أصلح ${auditCritical + auditHigh} نقطة ضعف في الإعدادات (شاشة «التدقيق الأمني»)`);
+  if (unsignedDanger) actions.push(`راجع ${unsignedDanger} برنامجًا «خطيرًا» على جهازك (شاشة «فحص الجهاز المحلي»)`);
+  if (activeThreats) actions.push(`${activeThreats} جهاز بحالة «تهديد نشط» على شبكتك`);
+  if (unsignedSuspect) actions.push(`راجع ${unsignedSuspect} برنامجًا «مشبوهًا» على جهازك`);
+  if (deviceHigh && !activeThreats) actions.push(`${deviceHigh} جهاز بخطورة مرتفعة على شبكتك`);
+
+  const counters = [
+    ["تهديدات الأجهزة", deviceCritical + deviceHigh],
+    ["برامج مشبوهة على جهازك", unsignedDanger + unsignedSuspect],
+    ["نقاط ضعف الإعدادات", auditCritical + auditHigh],
+  ];
+
+  $("#posture-banner").innerHTML = `
+    <div class="posture-card ${cls}">
+      <div class="posture-head">
+        <span class="posture-dot"></span>
+        <div>
+          <div class="posture-title">الحالة الأمنية العامة</div>
+          <div class="posture-label">${esc(label)}</div>
+        </div>
+      </div>
+      <div class="posture-counters">
+        ${counters.map(([t, n]) => `<div class="posture-counter"><b>${n}</b><span>${esc(t)}</span></div>`).join("")}
+      </div>
+      ${actions.length ? `<ul class="posture-actions">${actions.slice(0, 3).map((a) => `<li>${esc(a)}</li>`).join("")}</ul>` : `<p class="posture-clear">لا توجد إجراءات عاجلة.</p>`}
+    </div>
+  `;
 }
 
 async function openDevice(id) {
