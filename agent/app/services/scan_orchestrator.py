@@ -25,6 +25,7 @@ from agent.app.discovery.wifi import wifi_scan
 from shared.authorization_gate import AuthorizationRequiredError, ensure_authorized
 from shared.models import ConnectionMedium, ScanReport, ScanTarget, ScannedDevice
 from shared.vuln_db.cve_client import lookup_many
+from shared.vuln_db.device_classify import classify_all
 from shared.vuln_db.risk_scoring import score_all
 
 logger = logging.getLogger("aladil.scan_orchestrator")
@@ -212,6 +213,8 @@ async def run_full_scan(
 
     all_devices = _merge_devices(device_groups)
     await _enrich_with_ports_and_vulns(all_devices, config)
+    # تصنيف الهواتف (Android/iOS) قبل التقييم ليؤثر نوع الجهاز في حساب المخاطر
+    classify_all(all_devices)
     try:
         annotate_host_activity(all_devices)
     except Exception as exc:  # noqa: BLE001

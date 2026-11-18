@@ -53,6 +53,7 @@
         <button id="change-password-btn">كلمة المرور</button>
         <button id="host-scan-btn">فحص الجهاز المحلي</button>
         <button id="audit-btn">التدقيق الأمني</button>
+        <button id="phones-btn">تحصين الهواتف</button>
         <button id="trusted-networks-btn">الشبكات الموثوقة</button>
       </div>
     </header>
@@ -139,6 +140,20 @@
           بنفسك؛ لا يوجد هنا أي زر "إيقاف/عزل" تلقائي.
         </p>
         <div id="host-scan-list"></div>
+      </div>
+    </div>
+
+    <div id="phones-modal" class="modal hidden">
+      <div class="modal-content">
+        <button class="modal-close" id="phones-close">×</button>
+        <h2>تحصين الهواتف المتصلة بشبكتك</h2>
+        <p class="hint">
+          الهواتف المكتشفة على شبكتك تظهر في الجدول الرئيسي بنوع «هاتف» ونظام
+          التشغيل حين يُعرَف. إن ظهر منفذ ADB (5555) مفتوحًا على أحد الهواتف
+          فهذا خطر مرتفع — راجع ملاحظات الجهاز. فيما يلي قوائم تحصين موجزة
+          طبّقها على كل هاتف وعلى حساباتك، خصوصًا بعد أي اشتباه اختراق.
+        </p>
+        <div id="phones-checklists"></div>
       </div>
     </div>
 
