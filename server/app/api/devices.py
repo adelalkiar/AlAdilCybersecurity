@@ -56,6 +56,46 @@ def get_device(device_id: str, db: Session = Depends(get_db)):
     return _serialize_device(device, include_vulns=True)
 
 
+@router.get("/{device_id}/block-command")
+def device_block_command(device_id: str, db: Session = Depends(get_db)):
+    """
+    يُرجع أمر PowerShell نموذجيًا (كنصّ فقط - لا يُنفَّذ هنا إطلاقًا) لحظر
+    عنوان IP هذا الجهاز واردًا وصادرًا في جدار حماية ويندوز، ليُنفّذه
+    المستخدم بنفسه كمسؤول إن قرّر عزل جهاز يشتبه أنه تهديد. النظام **لا
+    يُنشئ ولا يُعدّل أي قاعدة جدار حماية فعلية** ولا يعزل أي جهاز تلقائيًا.
+    """
+    device = db.query(Device).filter(Device.id == device_id).first()
+    if not device:
+        raise HTTPException(404, "الجهاز غير موجود")
+    if not device.ip_address:
+        raise HTTPException(
+            400, "لا يمكن إنشاء أمر حظر: هذا الجهاز بلا عنوان IP (قد يكون جهاز Bluetooth)"
+        )
+
+    ip = device.ip_address
+    safe = "".join(c for c in ip if c.isalnum() or c in "._-")
+    rule_in = f"AlAdil-Block-{safe}-in"
+    rule_out = f"AlAdil-Block-{safe}-out"
+    command = (
+        f'New-NetFirewallRule -DisplayName "{rule_in}" -Direction Inbound '
+        f'-RemoteAddress {ip} -Action Block; '
+        f'New-NetFirewallRule -DisplayName "{rule_out}" -Direction Outbound '
+        f'-RemoteAddress {ip} -Action Block'
+    )
+    undo = f'Remove-NetFirewallRule -DisplayName "{rule_in}","{rule_out}"'
+    return {
+        "ip": ip,
+        "command": command,
+        "undo_command": undo,
+        "note": (
+            "انسخ أمر الحظر ونفّذه بنفسك في PowerShell كمسؤول (Run as Administrator) "
+            "إن قرّرت عزل هذا الجهاز. هذا النظام لا ينفّذه نيابةً عنك ولا يعزل أي جهاز "
+            "تلقائيًا. تأكد أولًا أن هذا ليس جهازًا تحتاجه (مثل راوتر أو خادم قاعدة بيانات)، "
+            "واستخدم أمر التراجع لإلغاء الحظر لاحقًا."
+        ),
+    }
+
+
 @router.patch("/{device_id}/notes")
 def update_notes(device_id: str, notes: str, db: Session = Depends(get_db)):
     device = db.query(Device).filter(Device.id == device_id).first()
@@ -103,6 +143,7 @@ def _serialize_device(device: Device, include_vulns: bool = False) -> dict:
         "mac_address": device.mac_address,
         "vendor": device.vendor,
         "hostname": device.hostname,
+        "os_guess": device.os_guess,
         "device_type": device.device_type,
         "connection_medium": device.connection_medium,
         "overall_threat_level": device.overall_threat_level,

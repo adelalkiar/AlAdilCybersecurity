@@ -208,11 +208,24 @@ async function openDevice(id) {
   const hostActivityHtml = (d.host_activity_notes || [])
     .map((n) => `<div class="exploit-note">${esc(n)}</div>`).join("");
 
+  // زرّ توصية الحظر يظهر فقط للأجهزة المصنّفة تهديدًا ولها عنوان IP
+  const isThreat = d.intruder_status === "active_threat"
+    || ["critical", "high"].includes(d.overall_threat_level);
+  const blockSection = (isThreat && d.ip_address) ? `
+    <h3>عزل هذا الجهاز</h3>
+    <p class="hint">
+      هذا الجهاز مصنّف كتهديد. إن أردت عزله، اضغط لعرض أمر حظره في جدار الحماية
+      ونفّذه بنفسك كمسؤول. النظام لا يعزل أي جهاز تلقائيًا.
+    </p>
+    <button id="block-device-btn" data-id="${esc(d.id)}">عرض أمر حظر هذا الجهاز</button>
+    <div id="block-cmd-box"></div>
+  ` : "";
+
   $("#modal-body").innerHTML = `
     <h2>${esc(d.hostname) || "جهاز غير معروف"} ${d.is_unidentified ? '<span class="badge info">مجهول</span>' : ""}</h2>
     ${d.identity_spoof_suspected ? `<div class="identity-alert">⚠ <b>اشتباه انتحال هوية:</b> ${esc(d.identity_spoof_note)}</div>` : ""}
     <p><b>IP:</b> ${esc(d.ip_address) || "—"} &nbsp; <b>MAC:</b> ${esc(d.mac_address) || "—"} &nbsp; <b>الشركة:</b> ${esc(d.vendor) || "—"}</p>
-    <p><b>النوع:</b> ${esc(d.device_type)} &nbsp; <b>وسيلة الاتصال:</b> ${esc(d.connection_medium)}</p>
+    <p><b>النوع:</b> ${esc(d.device_type)}${d.os_guess ? ` (${esc(d.os_guess)})` : ""} &nbsp; <b>وسيلة الاتصال:</b> ${esc(d.connection_medium)}</p>
     <p><b>احتمالية الوصول:</b> ${d.access_likelihood_score.toFixed(0)}% &nbsp;
        <b>الضرر المحتمل:</b> ${d.potential_damage_score.toFixed(0)}%</p>
     <p><b>محاولات فاشلة:</b> ${d.failed_connection_attempts} &nbsp;
@@ -223,9 +236,28 @@ async function openDevice(id) {
     <h3>المنافذ المفتوحة</h3>
     <ul>${(d.open_ports || []).map((p) => `<li>${esc(p.port)}/${esc(p.protocol)} — ${esc(p.service) || "غير معروف"}</li>`).join("") || "<li>لا توجد منافذ مفتوحة مكتشفة</li>"}</ul>
     ${exploitHtml ? `<h3>ملاحظات قابلية الاستغلال</h3>${exploitHtml}` : ""}
+    ${blockSection}
     <h3>الثغرات</h3>
     ${vulnsHtml}
   `;
+
+  const blockBtn = $("#block-device-btn");
+  if (blockBtn) {
+    blockBtn.addEventListener("click", async () => {
+      try {
+        const r = await api(`/api/devices/${blockBtn.dataset.id}/block-command`);
+        $("#block-cmd-box").innerHTML = `
+          <p><b>أمر الحظر (نفّذه أنت كمسؤول):</b></p>
+          <pre class="cmd-box">${esc(r.command)}</pre>
+          <details><summary>أمر التراجع (إلغاء الحظر)</summary><pre class="cmd-box">${esc(r.undo_command)}</pre></details>
+          <p class="hint">${esc(r.note)}</p>
+        `;
+      } catch (e) {
+        $("#block-cmd-box").innerHTML = `<p class="hint">تعذّر إنشاء أمر الحظر لهذا الجهاز.</p>`;
+      }
+    });
+  }
+
   $("#device-modal").classList.remove("hidden");
 }
 
