@@ -147,6 +147,34 @@ class UnsignedProgramFinding(BaseModel):
     processes: list[dict] = Field(default_factory=list)
 
 
+class SecurityAuditFinding(BaseModel):
+    """
+    نتيجة "تدقيق أمني للقراءة فقط" على جهاز النظام نفسه - تكشف نقاط ضعف
+    في إعدادات الحماية (Defender، جدار الحماية، UAC، LSA، SmartScreen...)
+    دون تنفيذ أي تعديل. أمر الإصلاح (fix_command) وأمر التراجع
+    (undo_command) يُعرضان كنصّ فقط ليُنفّذهما المستخدم بنفسه في
+    PowerShell كمسؤول إن أراد - النظام **لا يُعدّل أي إعداد نظام تلقائيًا**.
+
+    مبنية على منهجية القسم الثاني من
+    .claude/skills/unsigned-program-detection/SKILL.md (الكشف فقط - دون
+    دالة apply التي تُطبّق الإصلاحات في المرجع الأصلي).
+    """
+    id: str
+    title: str
+    severity: str = "medium"  # critical | high | medium | low
+    status: str = "vulnerable"  # vulnerable | ok | info
+    evidence: str = ""
+    impact: str = ""
+    fix_command: Optional[str] = None
+    undo_command: Optional[str] = None
+    needs_reboot: bool = False
+    fix_risk: str = "منخفض"
+    # هل الإصلاح آمن وقابل للتراجع (يمكن للمستخدم تنفيذ fix_command بثقة)،
+    # أم أنه يتطلب قرارًا يدويًا (BIOS، تعريفات...) فلا يوجد له أمر جاهز
+    is_auto_safe: bool = True
+    manual_steps: list[str] = Field(default_factory=list)
+
+
 class ScanTarget(BaseModel):
     """نطاق فحص يدخله المستخدم يدويًا (شبكة محلية أو خارجية)."""
     cidr_or_host: str
@@ -165,6 +193,8 @@ class ScanReport(BaseModel):
     # فحص الجهاز المحلي نفسه (وليس الأجهزة الأخرى على الشبكة) بحثًا عن
     # برامج غير موقَّعة أو متخفّية - قراءة فقط، بلا احتواء تلقائي
     unsigned_program_findings: list[UnsignedProgramFinding] = Field(default_factory=list)
+    # تدقيق أمني للقراءة فقط على إعدادات حماية جهاز النظام - بلا تعديل تلقائي
+    security_audit_findings: list[SecurityAuditFinding] = Field(default_factory=list)
 
 
 class AgentInfo(BaseModel):

@@ -33,6 +33,8 @@ class Agent(Base):
     # نتائج آخر فحص "برامج غير موقَّعة/متخفّية" على جهاز الوكيل نفسه (قراءة
     # فقط - بلا احتواء تلقائي) - قائمة UnsignedProgramFinding مُسلسَلة JSON
     unsigned_program_findings_json: Mapped[list] = mapped_column(JSON, default=list)
+    # نتائج آخر تدقيق أمني للقراءة فقط على إعدادات حماية جهاز الوكيل
+    security_audit_findings_json: Mapped[list] = mapped_column(JSON, default=list)
 
     devices: Mapped[list["Device"]] = relationship(back_populates="agent")
 

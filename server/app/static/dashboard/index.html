@@ -52,6 +52,7 @@
         <button id="licenses-btn">التراخيص</button>
         <button id="change-password-btn">كلمة المرور</button>
         <button id="host-scan-btn">فحص الجهاز المحلي</button>
+        <button id="audit-btn">التدقيق الأمني</button>
         <button id="trusted-networks-btn">الشبكات الموثوقة</button>
       </div>
     </header>
@@ -137,6 +138,21 @@
           بنفسك؛ لا يوجد هنا أي زر "إيقاف/عزل" تلقائي.
         </p>
         <div id="host-scan-list"></div>
+      </div>
+    </div>
+
+    <div id="audit-modal" class="modal hidden">
+      <div class="modal-content">
+        <button class="modal-close" id="audit-close">×</button>
+        <h2>التدقيق الأمني لإعدادات الحماية</h2>
+        <p class="hint">
+          تدقيق قراءة فقط لإعدادات حماية جهازك (Defender، جدار الحماية، UAC،
+          LSA، SmartScreen...). النظام <b>لا يُعدّل أي إعداد تلقائيًا</b>. لكل
+          نقطة ضعف يظهر أمر الإصلاح الموصى به — انسخه ونفّذه بنفسك في PowerShell
+          كمسؤول إن قررت، ومعه أمر التراجع. بعض البنود تتطلب خطوات يدوية (BIOS،
+          واجهة Windows) لا أمر جاهز لها.
+        </p>
+        <div id="audit-list"></div>
       </div>
     </div>
 

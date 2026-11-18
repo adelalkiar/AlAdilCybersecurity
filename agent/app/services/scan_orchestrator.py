@@ -19,6 +19,8 @@ from agent.app.discovery.mdns import mdns_scan
 from agent.app.discovery.network import arp_scan, discover_local_subnets
 from agent.app.discovery.portscan import scan_many_hosts_ports
 from agent.app.discovery.unsigned_programs import scan_unsigned_programs
+from agent.app.discovery.vuln_audit import run_security_audit
+from agent.app.discovery.vuln_registry import update_local_registry
 from agent.app.discovery.wifi import wifi_scan
 from shared.authorization_gate import AuthorizationRequiredError, ensure_authorized
 from shared.models import ConnectionMedium, ScanReport, ScanTarget, ScannedDevice
@@ -171,18 +173,27 @@ async def run_full_scan(
         t.cidr_or_host for t in verified_targets if t.medium == ConnectionMedium.ETHERNET
     ] or local_subnets
 
+    # آخر عنصرين في القائمة ليسا من نوع ScannedDevice: فحص البرامج غير
+    # الموقَّعة ثم التدقيق الأمني - نعزلهما قبل دمج الأجهزة
     results = await asyncio.gather(
         *(arp_scan(cidr) for cidr in local_cidrs),
         mdns_scan(config.mdns_duration),
         wifi_scan(),
         bluetooth_scan(config.bluetooth_duration),
         scan_unsigned_programs(),
+        run_security_audit(),
         return_exceptions=True,
     )
 
-    # scan_unsigned_programs() هو آخر عنصر دائمًا في القائمة أعلاه، ونتيجته
-    # ليست من نوع ScannedDevice فنستبعدها من دمج الأجهزة ونتعامل معها أولًا
-    unsigned_result = results[-1]
+    audit_result = results[-1]
+    audit_findings: list = []
+    if isinstance(audit_result, Exception):
+        errors.append(str(audit_result))
+        logger.exception("خطأ أثناء التدقيق الأمني", exc_info=audit_result)
+    elif isinstance(audit_result, list):
+        audit_findings = audit_result
+
+    unsigned_result = results[-2]
     unsigned_findings: list = []
     if isinstance(unsigned_result, Exception):
         errors.append(str(unsigned_result))
@@ -191,7 +202,7 @@ async def run_full_scan(
         unsigned_findings = unsigned_result
 
     device_groups: list[list[ScannedDevice]] = []
-    for result in results[:-1]:
+    for result in results[:-2]:
         if isinstance(result, Exception):
             errors.append(str(result))
             logger.exception("خطأ أثناء أحد مسارات الاكتشاف المتوازية", exc_info=result)
@@ -207,6 +218,13 @@ async def run_full_scan(
         logger.warning("تعذّرت مراقبة سلوك الوصول لجهاز النظام: %s", exc)
     score_all(all_devices)
 
+    # سجل الثغرات المحلي: نراكم نتائج التدقيق عبر الزمن على هذا الجهاز نفسه
+    # (محلي فقط - لا يُرفع لأي خادم مركزي ولا يُشارك عبر أجهزة أخرى)
+    try:
+        update_local_registry(audit_findings, unsigned_findings)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("تعذّر تحديث سجل الثغرات المحلي: %s", exc)
+
     finished_at = datetime.utcnow()
     primary_target = verified_targets[0] if verified_targets else ScanTarget(
         cidr_or_host=local_subnets[0] if local_subnets else "unknown",
@@ -221,4 +239,5 @@ async def run_full_scan(
         devices=all_devices,
         errors=errors,
         unsigned_program_findings=unsigned_findings,
+        security_audit_findings=audit_findings,
     )

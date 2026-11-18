@@ -300,6 +300,60 @@ $("#host-scan-btn").addEventListener("click", () => {
 });
 $("#host-scan-close").addEventListener("click", () => $("#host-scan-modal").classList.add("hidden"));
 
+const SEVERITY_LABELS = { critical: "حرجة", high: "مرتفعة", medium: "متوسطة", low: "منخفضة" };
+
+function renderAuditFinding(f) {
+  const manualHtml = (f.manual_steps || []).map((s) => `<li>${esc(s)}</li>`).join("");
+  const badgeClass = { critical: "critical", high: "high", medium: "medium", low: "info" }[f.severity] || "info";
+  return `
+    <div class="vuln-item">
+      <h4>
+        <span class="badge ${badgeClass}">${esc(SEVERITY_LABELS[f.severity] || f.severity)}</span>
+        ${esc(f.title)}
+      </h4>
+      <p><b>الدليل:</b> ${esc(f.evidence)}</p>
+      <p><b>ما يستطيعه المهاجم:</b> ${esc(f.impact)}</p>
+      ${f.fix_command ? `
+        <div class="fix">
+          <b>أمر الإصلاح (نفّذه أنت كمسؤول):</b>
+          <pre class="cmd-box">${esc(f.fix_command)}</pre>
+          ${f.needs_reboot ? `<p>⚠ يتطلب إعادة تشغيل بعد التنفيذ.</p>` : ""}
+          <p class="hint">درجة خطورة الإصلاح: ${esc(f.fix_risk)}</p>
+          ${f.undo_command ? `<details><summary>أمر التراجع</summary><pre class="cmd-box">${esc(f.undo_command)}</pre></details>` : ""}
+        </div>` : ""}
+      ${manualHtml ? `<p><b>خطوات يدوية:</b></p><ul>${manualHtml}</ul>` : ""}
+    </div>
+  `;
+}
+
+async function loadAudit() {
+  $("#audit-list").innerHTML = "<p>جارٍ التحميل...</p>";
+  try {
+    const agentsList = await api("/api/agents");
+    const allFindings = agentsList.flatMap((a) =>
+      (a.security_audit_findings || []).map((f) => ({ ...f, _agent: a.hostname || a.id }))
+    );
+    if (!allFindings.length) {
+      $("#audit-list").innerHTML = "<p>لا توجد نتائج بعد - ستظهر هنا بعد أول دورة تدقيق من الوكيل.</p>";
+      return;
+    }
+    const order = { critical: 0, high: 1, medium: 2, low: 3 };
+    allFindings.sort((a, b) => (order[a.severity] ?? 9) - (order[b.severity] ?? 9));
+    $("#audit-list").innerHTML = allFindings.map((f) => `
+      <p class="hint"><b>الجهاز:</b> ${esc(f._agent)}</p>
+      ${renderAuditFinding(f)}
+    `).join("");
+  } catch (e) {
+    $("#audit-list").innerHTML = "<p>تعذّر تحميل نتائج التدقيق.</p>";
+  }
+}
+
+$("#audit-btn").addEventListener("click", () => {
+  $("#audit-modal").classList.remove("hidden");
+  loadAudit();
+});
+$("#audit-close").addEventListener("click", () => $("#audit-modal").classList.add("hidden"));
+
 async function loadTrustedNetworks() {
   try {
     const entries = await api("/api/trusted-networks");

@@ -77,6 +77,9 @@ def submit_scan_report(
         agent.unsigned_program_findings_json = [
             f.model_dump(mode="json") for f in report.unsigned_program_findings
         ]
+        agent.security_audit_findings_json = [
+            f.model_dump(mode="json") for f in report.security_audit_findings
+        ]
 
         for scanned in report.devices:
             device = (
