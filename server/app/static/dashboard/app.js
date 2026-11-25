@@ -586,6 +586,65 @@ $("#firewall-btn").addEventListener("click", () => {
 });
 $("#firewall-close").addEventListener("click", () => $("#firewall-modal").classList.add("hidden"));
 
+function renderChainResult(name, c) {
+  const okBadge = c.ok ? '<span class="badge low">سليمة</span>' : '<span class="badge critical">مكسورة</span>';
+  return `<div class="vuln-item"><h4>${esc(name)} ${okBadge}</h4>
+    <p>عدد الأسطر: ${esc(c.total)} — ${esc(c.reason)}${c.broken_at !== null && c.broken_at !== undefined ? ` (أول كسر عند السطر ${esc(c.broken_at)})` : ""}</p></div>`;
+}
+
+async function verifyChains() {
+  $("#chains-result").innerHTML = "<p>جارٍ التحقق...</p>";
+  try {
+    const r = await api("/api/scans/audit/verify-chains");
+    $("#chains-result").innerHTML =
+      renderChainResult("سجل تفويض الفحص الخارجي", r.authorization_chain) +
+      renderChainResult("سجل أحداث الخادم", r.server_events_chain);
+  } catch (e) {
+    $("#chains-result").innerHTML = "<p>تعذّر التحقق.</p>";
+  }
+}
+
+async function loadSignedReports() {
+  try {
+    const reports = await api("/api/scans");
+    if (!reports.length) {
+      $("#reports-list").innerHTML = "<p>لا توجد تقارير موقَّعة بعد.</p>";
+      return;
+    }
+    $("#reports-list").innerHTML = reports.map((r) => `
+      <div class="lic-row">
+        <b>${esc(r.agent_id)}</b> — ${new Date(r.received_at).toLocaleString("ar")}
+        <div class="meta">أجهزة: ${esc(r.device_count)} · نتائج: ${esc(r.finding_count)} · بصمة: ${esc((r.content_hash || "").slice(0, 16))}…</div>
+        <button class="verify-report-btn" data-id="${esc(r.id)}">تحقق من التوقيع</button>
+        <div class="verify-report-result" data-for="${esc(r.id)}"></div>
+      </div>
+    `).join("");
+    document.querySelectorAll(".verify-report-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const box = document.querySelector(`.verify-report-result[data-for="${btn.dataset.id}"]`);
+        box.innerHTML = "جارٍ التحقق...";
+        try {
+          const v = await api(`/api/scans/${btn.dataset.id}/verify`);
+          const badge = v.valid ? '<span class="badge low">صالح</span>' : '<span class="badge critical">غير صالح</span>';
+          box.innerHTML = `${badge} <span class="hint">${esc(v.detail)}</span>`;
+        } catch (e) {
+          box.innerHTML = '<span class="hint">تعذّر التحقق.</span>';
+        }
+      });
+    });
+  } catch (e) {
+    $("#reports-list").innerHTML = "<p>تعذّر تحميل التقارير.</p>";
+  }
+}
+
+$("#accountability-btn").addEventListener("click", () => {
+  $("#accountability-modal").classList.remove("hidden");
+  $("#chains-result").innerHTML = "";
+  loadSignedReports();
+});
+$("#accountability-close").addEventListener("click", () => $("#accountability-modal").classList.add("hidden"));
+$("#verify-chains-btn").addEventListener("click", verifyChains);
+
 async function loadTrustedNetworks() {
   try {
     const entries = await api("/api/trusted-networks");

@@ -10,11 +10,11 @@
 from __future__ import annotations
 
 import ipaddress
-import json
 import logging
 from datetime import datetime
 from pathlib import Path
 
+from shared.integrity import append_entry, verify_chain
 from shared.models import ConnectionMedium, ScanTarget
 
 logger = logging.getLogger("aladil.authorization")
@@ -67,12 +67,17 @@ def ensure_authorized(target: ScanTarget, local_subnets: list[str]) -> ScanTarge
 
 
 def _write_audit_entry(target: ScanTarget) -> None:
-    AUDIT_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    entry = {
-        "timestamp": datetime.utcnow().isoformat() + "Z",
-        "target": target.cidr_or_host,
-        "authorization_note": target.authorization_note or "",
-    }
-    with AUDIT_LOG_PATH.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    """يكتب سطر تفويض مربوطًا بسلسلة تجزئة (عدم إنكار/مساءلة): أي حذف أو
+    تعديل لاحق لسطر يكسر السلسلة ويُكتشَف عبر verify_authorization_chain."""
+    timestamp = datetime.utcnow().isoformat() + "Z"
+    entry = append_entry(
+        AUDIT_LOG_PATH,
+        {"target": target.cidr_or_host, "authorization_note": target.authorization_note or ""},
+        timestamp=timestamp,
+    )
     logger.warning("تم تأكيد تفويض فحص هدف خارجي: %s", entry)
+
+
+def verify_authorization_chain() -> dict:
+    """يتحقق من سلامة سلسلة سجل التفويض (يكشف الحذف/التعديل)."""
+    return verify_chain(AUDIT_LOG_PATH)

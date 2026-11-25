@@ -114,6 +114,26 @@ class VulnerabilityRecord(Base):
     device: Mapped["Device"] = relationship(back_populates="vulnerabilities")
 
 
+class ScanReportRecord(Base):
+    """
+    سجل موقَّع رقميًا لكل تقرير فحص مستلَم - لتحقيق «عدم الإنكار» (الفصل 1):
+    يحفظ الخادم بصمة محتوى التقرير + حمولة مشهادة موقَّعة بمفتاحه الخاص
+    (Ed25519)، فيمكن لاحقًا التحقق أن الخادم شهد بهذا التقرير في هذا الوقت
+    عبر /api/scans/{id}/verify، ولا يستطيع أحد إنكاره أو تزويره.
+    """
+    __tablename__ = "scan_report_records"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    agent_id: Mapped[str] = mapped_column(String(36), index=True)
+    received_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    device_count: Mapped[int] = mapped_column(Integer, default=0)
+    finding_count: Mapped[int] = mapped_column(Integer, default=0)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    # الحمولة المشهادة الموقَّعة (JSON متعارف) + توقيعها
+    signed_payload: Mapped[str] = mapped_column(Text)
+    signature: Mapped[str] = mapped_column(Text)
+
+
 class ScanAuditLog(Base):
     """سجل تدقيق لكل عملية فحص هدف خارجي تم تفويضها (متطلب امتثالي)."""
     __tablename__ = "scan_audit_log"

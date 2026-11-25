@@ -64,6 +64,23 @@ def load_public_key() -> Ed25519PublicKey:
     return serialization.load_pem_public_key(pub_bytes)
 
 
+def sign_payload(data: bytes) -> str:
+    """يوقّع بايتات بمفتاح الخادم الخاص (Ed25519) ويرجع التوقيع كـ base64url.
+    يُستخدم لتوقيع تقارير الفحص (عدم الإنكار - الفصل 1): يثبت أن الخادم
+    شهد بهذا المحتوى في هذا الوقت، فلا يستطيع أحد إنكاره أو تزويره لاحقًا."""
+    private_key = ensure_signing_key()
+    return _b64e(private_key.sign(data))
+
+
+def verify_payload(data: bytes, signature_b64: str) -> bool:
+    """يتحقق من توقيع بايتات بالمفتاح العام. يرجع True إن كان صالحًا."""
+    try:
+        load_public_key().verify(_b64d(signature_b64), data)
+        return True
+    except Exception:  # noqa: BLE001  # أي فشل تحقق = توقيع غير صالح
+        return False
+
+
 # وحدات زمن صلاحية الترخيص المدعومة في واجهة النظام (دقيقة/ساعة/يوم/
 # أسبوع/شهر/سنة) مع تحويلها إلى timedelta. الشهر والسنة تقديريان (30 و
 # 365 يومًا) لعدم تعقيد الحساب بتقويم فعلي - دقيق بما يكفي لأغراض الترخيص.

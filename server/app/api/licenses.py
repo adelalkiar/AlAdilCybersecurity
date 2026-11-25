@@ -66,6 +66,14 @@ def issue_license(
     )
     db.add(record)
     db.commit()
+    # المساءلة (الفصل 1): نسجّل إصدار الترخيص في سلسلة الأحداث (بلا المفتاح نفسه)
+    from server.app.core.audit_chain import record_event
+    record_event(
+        "license_issued",
+        {"customer_name": customer_name, "max_agents": max_agents,
+         "duration": "lifetime" if is_lifetime else f"{duration_count} {duration_unit}"},
+        actor=current_user.username,
+    )
     return {
         "license_key": key,
         "expires_at": expires_at.isoformat() if expires_at else None,

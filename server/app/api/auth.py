@@ -22,8 +22,13 @@ class ChangePasswordRequest(BaseModel):
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
+        # نسجّل محاولة الدخول الفاشلة في سلسلة المساءلة أيضًا
+        from server.app.core.audit_chain import record_event
+        record_event("login_failed", {"username": form_data.username})
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "بيانات الدخول غير صحيحة")
     token = create_access_token(subject=user.username)
+    from server.app.core.audit_chain import record_event
+    record_event("login", actor=user.username)
     return {"access_token": token, "token_type": "bearer"}
 
 

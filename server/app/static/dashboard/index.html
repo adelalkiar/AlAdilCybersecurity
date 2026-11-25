@@ -54,6 +54,7 @@
         <button id="host-scan-btn">فحص الجهاز المحلي</button>
         <button id="audit-btn">التدقيق الأمني</button>
         <button id="firewall-btn">الجدار الناري</button>
+        <button id="accountability-btn">المساءلة والتحقق</button>
         <button id="phones-btn">تحصين الهواتف</button>
         <button id="trusted-networks-btn">الشبكات الموثوقة</button>
       </div>
@@ -141,6 +142,23 @@
           بنفسك؛ لا يوجد هنا أي زر "إيقاف/عزل" تلقائي.
         </p>
         <div id="host-scan-list"></div>
+      </div>
+    </div>
+
+    <div id="accountability-modal" class="modal hidden">
+      <div class="modal-content">
+        <button class="modal-close" id="accountability-close">×</button>
+        <h2>المساءلة وعدم الإنكار (الفصل 1)</h2>
+        <p class="hint">
+          كل تقرير فحص يُوقَّع رقميًا بمفتاح الخادم (Ed25519) فلا يمكن إنكاره
+          أو تزويره. وسجلّا التفويض وأحداث الخادم مربوطان بسلسلة تجزئة
+          (SHA-256) تكشف أي حذف أو تعديل لأي سطر. اضغط «تحقق» لإعادة التحقق.
+        </p>
+        <h3>سلامة سجلات التدقيق</h3>
+        <button id="verify-chains-btn">تحقق من سلاسل التدقيق</button>
+        <div id="chains-result"></div>
+        <h3>تقارير الفحص الموقَّعة</h3>
+        <div id="reports-list"></div>
       </div>
     </div>
 

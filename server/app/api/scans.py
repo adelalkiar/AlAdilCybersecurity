@@ -6,13 +6,24 @@
 from __future__ import annotations
 
 import hashlib
+from datetime import datetime
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
+from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
-from server.app.db.database import SessionLocal
-from server.app.models.device import Agent, Device, ScanAuditLog, VulnerabilityRecord
-from server.app.services.license_service import verify_license_key
+from server.app.api.deps import get_current_user
+from server.app.core.audit_chain import record_event, verify_server_events
+from server.app.db.database import SessionLocal, get_db
+from server.app.models.device import (
+    Agent,
+    Device,
+    ScanAuditLog,
+    ScanReportRecord,
+    VulnerabilityRecord,
+)
+from server.app.services.license_service import sign_payload, verify_license_key, verify_payload
+from shared.authorization_gate import verify_authorization_chain
 from shared.models import ScanReport
 
 router = APIRouter(prefix="/api/scans", tags=["scans"])
@@ -185,7 +196,107 @@ def submit_scan_report(
                 )
             )
 
+        # عدم الإنكار (الفصل 1): نحفظ بصمة محتوى التقرير ونوقّعها بمفتاح
+        # الخادم، فيمكن التحقق لاحقًا أن الخادم شهد بهذا التقرير دون تزوير.
+        record = _store_signed_report(db, report)
+        record_event(
+            "scan_received",
+            {"agent_id": report.agent_id, "devices": len(report.devices),
+             "report_record_id": record.id},
+        )
+
         db.commit()
-        return {"ok": True, "devices_processed": len(report.devices), "errors": report.errors}
+        return {
+            "ok": True,
+            "devices_processed": len(report.devices),
+            "errors": report.errors,
+            "report_record_id": record.id,
+        }
     finally:
         db.close()
+
+
+def _store_signed_report(db: Session, report: ScanReport) -> ScanReportRecord:
+    """يبني بصمة محتوى التقرير + حمولة مشهادة موقَّعة ويخزّنها."""
+    import hashlib
+    import json
+
+    raw = report.model_dump_json().encode("utf-8")
+    content_hash = hashlib.sha256(raw).hexdigest()
+    finding_count = len(report.unsigned_program_findings) + len(report.security_audit_findings) + sum(
+        len(d.vulnerabilities) for d in report.devices
+    )
+    received_at = datetime.utcnow()
+    attest = {
+        "agent_id": report.agent_id,
+        "received_at": received_at.isoformat() + "Z",
+        "device_count": len(report.devices),
+        "finding_count": finding_count,
+        "content_hash": content_hash,
+    }
+    signed_payload = json.dumps(attest, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    signature = sign_payload(signed_payload.encode("utf-8"))
+    record = ScanReportRecord(
+        agent_id=report.agent_id, received_at=received_at,
+        device_count=len(report.devices), finding_count=finding_count,
+        content_hash=content_hash, signed_payload=signed_payload, signature=signature,
+    )
+    db.add(record)
+    db.flush()
+    return record
+
+
+@router.get("")
+def list_scan_reports(
+    db: Session = Depends(get_db), _user=Depends(get_current_user)
+):
+    """أحدث تقارير الفحص الموقَّعة (للمساءلة/التحقق) - للمشرفين فقط."""
+    records = (
+        db.query(ScanReportRecord).order_by(desc(ScanReportRecord.received_at)).limit(50).all()
+    )
+    return [
+        {
+            "id": r.id,
+            "agent_id": r.agent_id,
+            "received_at": r.received_at.isoformat(),
+            "device_count": r.device_count,
+            "finding_count": r.finding_count,
+            "content_hash": r.content_hash,
+        }
+        for r in records
+    ]
+
+
+@router.get("/audit/verify-chains")
+def verify_audit_chains(_user=Depends(get_current_user)):
+    """يتحقق من سلامة سلسلتَي التجزئة: سجل تفويض العميل وسجل أحداث الخادم
+    (يكشف أي حذف أو تعديل لسطر) - الفصل 1: المساءلة."""
+    return {
+        "authorization_chain": verify_authorization_chain(),
+        "server_events_chain": verify_server_events(),
+    }
+
+
+@router.get("/{record_id}/verify")
+def verify_scan_report(record_id: str, db: Session = Depends(get_db), _user=Depends(get_current_user)):
+    """
+    يتحقق من التوقيع الرقمي لتقرير فحص مخزَّن (عدم الإنكار - الفصل 1):
+    يعيد التحقق من توقيع الخادم على الحمولة المشهادة بالمفتاح العام.
+    """
+    record = db.query(ScanReportRecord).filter(ScanReportRecord.id == record_id).first()
+    if not record:
+        raise HTTPException(404, "سجل التقرير غير موجود")
+    valid = verify_payload(record.signed_payload.encode("utf-8"), record.signature)
+    return {
+        "valid": valid,
+        "record_id": record.id,
+        "agent_id": record.agent_id,
+        "received_at": record.received_at.isoformat(),
+        "content_hash": record.content_hash,
+        "signed_payload": record.signed_payload,
+        "detail": (
+            "التوقيع صالح: الخادم يشهد بهذا التقرير بهذا المحتوى وفي هذا الوقت، ولا يمكن إنكاره أو تزويره."
+            if valid else
+            "التوقيع غير صالح: جرى تعديل الحمولة المشهادة أو التوقيع."
+        ),
+    }
