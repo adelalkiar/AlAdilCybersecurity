@@ -72,6 +72,15 @@ def device_block_command(device_id: str, db: Session = Depends(get_db)):
             400, "لا يمكن إنشاء أمر حظر: هذا الجهاز بلا عنوان IP (قد يكون جهاز Bluetooth)"
         )
 
+    # OWASP API8/حقن: عنوان الـ IP يُدرَج في أمر PowerShell سيُنفّذه المستخدم،
+    # فنتحقق أنه عنوان صالح فعلًا قبل بنائه - حتى لا يحقن جهاز مُسيطَر عليه
+    # (أبلغ عن ip_address خبيث) أوامر إضافية في طرفية المستخدم.
+    import ipaddress
+    try:
+        ipaddress.ip_address(device.ip_address)
+    except ValueError:
+        raise HTTPException(400, "عنوان IP غير صالح لهذا الجهاز")
+
     ip = device.ip_address
     safe = "".join(c for c in ip if c.isalnum() or c in "._-")
     rule_in = f"AlAdil-Block-{safe}-in"
