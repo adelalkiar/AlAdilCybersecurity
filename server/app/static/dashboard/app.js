@@ -208,6 +208,16 @@ async function openDevice(id) {
   const hostActivityHtml = (d.host_activity_notes || [])
     .map((n) => `<div class="exploit-note">${esc(n)}</div>`).join("");
 
+  // خط زمني للمهاجم (الفصل 2): مراحل الهجوم التي بلغها سلوك الجهاز
+  const PHASE_LABELS = { target_selection: "اختيار الهدف", reconnaissance: "جمع المعلومات (استطلاع)", attack: "الهجوم" };
+  const timeline = d.attacker_timeline || [];
+  const timelineHtml = timeline.length ? `
+    <h3>خط زمني للمهاجم (مراحل الاختراق)</h3>
+    <p class="hint">المرحلة الحالية: <b>${esc(PHASE_LABELS[d.attack_phase] || d.attack_phase)}</b></p>
+    <ol class="attack-timeline">
+      ${timeline.map((e) => `<li class="phase-${esc(e.phase)}"><b>${esc(e.label)}:</b> ${esc(e.evidence)}</li>`).join("")}
+    </ol>` : "";
+
   // زرّ توصية الحظر يظهر فقط للأجهزة المصنّفة تهديدًا ولها عنوان IP
   const isThreat = d.intruder_status === "active_threat"
     || ["critical", "high"].includes(d.overall_threat_level);
@@ -233,6 +243,7 @@ async function openDevice(id) {
     ${d.accessed_host_system ? `<p>🔴 <b>هذا الجهاز دخل إلى جهاز النظام نفسه</b></p>` : ""}
     ${d.unusual_data_transfer_detected ? `<p>🔴 <b>رُصد نقل بيانات غير معتاد من جهاز النظام</b></p>` : ""}
     ${hostActivityHtml}
+    ${timelineHtml}
     <h3>المنافذ المفتوحة</h3>
     <ul>${(d.open_ports || []).map((p) => `<li>${esc(p.port)}/${esc(p.protocol)} — ${esc(p.service) || "غير معروف"}</li>`).join("") || "<li>لا توجد منافذ مفتوحة مكتشفة</li>"}</ul>
     ${exploitHtml ? `<h3>ملاحظات قابلية الاستغلال</h3>${exploitHtml}` : ""}
@@ -636,6 +647,32 @@ async function loadSignedReports() {
     $("#reports-list").innerHTML = "<p>تعذّر تحميل التقارير.</p>";
   }
 }
+
+// صفحة القبعة البيضاء وأنواع المخترقين (الفصل 2) - محتوى مرجعي ثابت
+function renderEthics() {
+  const hats = [
+    ["🎩 القبعة البيضاء (White Hat)", "يخترق بتفويض صريح وقانوني لكشف الثغرات وإصلاحها. يوثّق كل خطوة. هذا النظام منها: لا يفحص نطاقًا خارجيًا إلا بعد تأكيد التفويض، ويسجّل كل تفويض في سلسلة تجزئة موقَّعة لا يمكن إنكارها.", "low"],
+    ["🎩 القبعة السوداء (Black Hat)", "يخترق دون إذن لمصلحته (سرقة بيانات، تخريب، ابتزاز). أفعاله جريمة. لا يوثّق ويخفي أثره.", "critical"],
+    ["🎩 القبعة الرمادية (Grey Hat)", "يخترق دون إذن مسبق لكن بلا نية خبيثة غالبًا (يكشف ثغرة ثم يبلّغ). يبقى مخالفًا قانونيًا لعدم وجود تفويض.", "medium"],
+  ];
+  const safeguards = [
+    "بوابة التفويض (authorization_gate): ترفض فحص أي نطاق خارج الشبكة المحلية دون تأكيد صريح من المستخدم بملكيته/تصريحه.",
+    "سجل تفويض بسلسلة تجزئة: كل فحص خارجي مفوَّض يُسجَّل بسطر مربوط تجزئيًا، يكشف أي حذف أو تعديل لاحق.",
+    "توقيع التقارير (Ed25519): كل تقرير فحص موقَّع بمفتاح الخادم، فلا يمكن إنكاره أو تزويره.",
+    "الفحص للقراءة فقط: لا استغلال فعلي، ولا تعديل تلقائي لأي نظام — كل إجراء خطوة منفصلة يؤكّدها المستخدم وقابلة للتراجع.",
+  ];
+  $("#ethics-body").innerHTML = `
+    <p class="hint">المنهج يصنّف المخترقين بحسب الإذن والنية. هذا النظام أداة دفاعية «قبعة بيضاء» بالكامل:</p>
+    ${hats.map(([t, d, cls]) => `<div class="vuln-item"><h4><span class="badge ${cls}">${esc(t)}</span></h4><p>${esc(d)}</p></div>`).join("")}
+    <h3>ما يجعل هذا النظام قبعة بيضاء</h3>
+    <ul>${safeguards.map((s) => `<li>${esc(s)}</li>`).join("")}</ul>
+  `;
+}
+$("#ethics-btn").addEventListener("click", () => {
+  $("#ethics-modal").classList.remove("hidden");
+  renderEthics();
+});
+$("#ethics-close").addEventListener("click", () => $("#ethics-modal").classList.add("hidden"));
 
 $("#accountability-btn").addEventListener("click", () => {
   $("#accountability-modal").classList.remove("hidden");

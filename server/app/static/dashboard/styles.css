@@ -276,6 +276,10 @@ main { padding: 24px; }
 .fw-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 13px; }
 .fw-table th, .fw-table td { border: 1px solid var(--border); padding: 6px 10px; text-align: right; }
 .fw-table th { background: var(--bg); }
+.attack-timeline { padding-inline-start: 20px; font-size: 13px; line-height: 1.9; }
+.attack-timeline li { margin-bottom: 4px; }
+.attack-timeline li.phase-attack { color: var(--critical); }
+.attack-timeline li.phase-reconnaissance { color: var(--high); }
 
 /* ---------- لوحة الحالة الأمنية العامة ---------- */
 .posture-banner { padding: 16px 20px 0; }
