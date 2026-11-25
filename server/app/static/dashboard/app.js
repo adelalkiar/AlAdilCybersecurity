@@ -674,6 +674,72 @@ $("#ethics-btn").addEventListener("click", () => {
 });
 $("#ethics-close").addEventListener("click", () => $("#ethics-modal").classList.add("hidden"));
 
+// مختبر التشفير (الفصل 4)
+const CRYPTANALYSIS_ATTACKS = [
+  ["نص مشفَّر فقط (Ciphertext-only)", "المهاجم يملك النص المشفَّر فقط. أضعف موقف له، لكنه يكفي لكسر قيصر/الإبدال بتحليل التكرار كما في الكاشف أعلاه."],
+  ["نص معروف (Known-plaintext)", "يملك أزواجًا من نص صريح وما يقابله مشفَّرًا. يسهّل استنتاج المفتاح في الشفرات الكلاسيكية."],
+  ["نص مختار (Chosen-plaintext)", "يستطيع تشفير نصوص يختارها ورؤية ناتجها. يكشف بنية الخوارزمية الضعيفة بسرعة."],
+  ["نص مشفَّر مختار (Chosen-ciphertext)", "يستطيع فكّ نصوص مشفَّرة يختارها. خطر على الأنظمة التي لا تتحقق من سلامة النص."],
+  ["نص مختار تكيّفي (Adaptive chosen)", "يختار مدخلاته تباعًا بناءً على النتائج السابقة - أقوى نموذج هجوم."],
+];
+
+function renderCryptAttacks() {
+  const rows = CRYPTANALYSIS_ATTACKS.map(([t, d]) => `<div class="vuln-item"><h4>${esc(t)}</h4><p>${esc(d)}</p></div>`).join("");
+  $("#cl-attacks").innerHTML = rows + `
+    <div class="vuln-item">
+      <h4>لماذا يقاومها AES-GCM و Ed25519 المستخدمان في النظام؟</h4>
+      <p>AES-GCM تشفير حديث بمفتاح 256-بت ومصادقة مدمجة: لا يسرّب أي بنية قابلة لتحليل التكرار،
+      ويكشف أي تعديل على النص المشفَّر (يقاوم هجمات النص المشفَّر المختار). و Ed25519 توقيع
+      رقمي: كسره يتطلب حل مسألة رياضية عصيّة، فلا ينفع معه أيٌّ من الهجمات الخمسة عمليًا.</p>
+    </div>`;
+}
+
+async function runCipher() {
+  const payload = {
+    algorithm: $("#cl-algo").value, mode: $("#cl-mode").value,
+    text: $("#cl-text").value, key: $("#cl-key").value, shift: parseInt($("#cl-shift").value || "3", 10),
+  };
+  try {
+    const r = await api("/api/crypto-lab/cipher", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+    });
+    $("#cl-result").textContent = r.ok ? ("النتيجة: " + r.result) : ("خطأ: " + r.error);
+  } catch (e) { $("#cl-result").textContent = "تعذّر التنفيذ."; }
+}
+
+async function scanWeak() {
+  const value = $("#cl-weak").value;
+  $("#cl-weak-result").innerHTML = "جارٍ الفحص...";
+  try {
+    const r = await api("/api/crypto-lab/scan-weak-encoding", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key_name: "password", value }),
+    });
+    if (!r.found) {
+      $("#cl-weak-result").innerHTML = '<p class="hint">لم يُكتشف ترميز ضعيف معروف في هذه القيمة.</p>';
+      return;
+    }
+    const f = r.finding;
+    $("#cl-weak-result").innerHTML = `
+      <div class="vuln-item">
+        <h4><span class="badge high">${esc(f.method)}</span> كُسِر بلا مفتاح</h4>
+        <p><b>النص المكشوف:</b> <code>${esc(f.decoded)}</code></p>
+        <p><b>المفتاح المستنتَج:</b> ${esc(f.inferred_key)}</p>
+        <p class="hint">${esc(f.recommendation)}</p>
+      </div>`;
+  } catch (e) { $("#cl-weak-result").innerHTML = "<p>تعذّر الفحص.</p>"; }
+}
+
+$("#crypto-btn").addEventListener("click", () => {
+  $("#crypto-modal").classList.remove("hidden");
+  $("#cl-result").textContent = "";
+  $("#cl-weak-result").innerHTML = "";
+  renderCryptAttacks();
+});
+$("#crypto-close").addEventListener("click", () => $("#crypto-modal").classList.add("hidden"));
+$("#cl-run").addEventListener("click", runCipher);
+$("#cl-scan").addEventListener("click", scanWeak);
+
 $("#accountability-btn").addEventListener("click", () => {
   $("#accountability-modal").classList.remove("hidden");
   $("#chains-result").innerHTML = "";

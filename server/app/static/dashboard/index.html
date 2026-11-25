@@ -56,6 +56,7 @@
         <button id="firewall-btn">الجدار الناري</button>
         <button id="accountability-btn">المساءلة والتحقق</button>
         <button id="ethics-btn">القبعة البيضاء</button>
+        <button id="crypto-btn">مختبر التشفير</button>
         <button id="phones-btn">تحصين الهواتف</button>
         <button id="trusted-networks-btn">الشبكات الموثوقة</button>
       </div>
@@ -143,6 +144,41 @@
           بنفسك؛ لا يوجد هنا أي زر "إيقاف/عزل" تلقائي.
         </p>
         <div id="host-scan-list"></div>
+      </div>
+    </div>
+
+    <div id="crypto-modal" class="modal hidden">
+      <div class="modal-content">
+        <button class="modal-close" id="crypto-close">×</button>
+        <h2>مختبر التشفير الكلاسيكي وتحليل الشفرات (الفصل 4)</h2>
+
+        <h3>تشفير/فك كلاسيكي</h3>
+        <div class="license-form">
+          <select id="cl-algo">
+            <option value="caesar">قيصر (إزاحة)</option>
+            <option value="substitution">إبدال عام (مفتاح 26 حرفًا)</option>
+            <option value="columnar">تبديل عمودي (مفتاح كلمة)</option>
+          </select>
+          <select id="cl-mode">
+            <option value="encrypt">تشفير</option>
+            <option value="decrypt">فك</option>
+          </select>
+          <input id="cl-text" type="text" placeholder="النص" />
+          <input id="cl-key" type="text" placeholder="المفتاح (للإبدال/التبديل)" />
+          <input id="cl-shift" type="number" value="3" placeholder="الإزاحة (لقيصر)" />
+          <button id="cl-run">نفّذ</button>
+          <p id="cl-result"></p>
+        </div>
+
+        <h3>كاشف الترميز الضعيف (كسر بلا مفتاح)</h3>
+        <div class="license-form">
+          <input id="cl-weak" type="text" placeholder="قيمة مُرمَّزة (Base64/ROT13/قيصر)" />
+          <button id="cl-scan">افحص واكسر</button>
+          <div id="cl-weak-result"></div>
+        </div>
+
+        <h3>أنواع هجمات تحليل الشفرة الخمسة</h3>
+        <div id="cl-attacks"></div>
       </div>
     </div>
 
