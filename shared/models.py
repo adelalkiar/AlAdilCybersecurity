@@ -175,6 +175,46 @@ class SecurityAuditFinding(BaseModel):
     manual_steps: list[str] = Field(default_factory=list)
 
 
+class FirewallProfileInfo(BaseModel):
+    """حالة ملف تعريف واحد لجدار حماية ويندوز (Domain/Private/Public)."""
+    name: str
+    enabled: bool = False
+    default_inbound: str = "NotConfigured"
+    default_outbound: str = "NotConfigured"
+
+
+class FirewallRuleClass(BaseModel):
+    """
+    قاعدة جدار ناري واحدة مُصنَّفة حسب أنواع الجدران النارية في المنهج
+    (الفصل 3): تصفية الحزم / مستوى التطبيق / فحص الحالة.
+    """
+    display_name: str
+    direction: str  # Inbound | Outbound
+    profile: str = ""
+    local_port: Optional[str] = None
+    remote_address: Optional[str] = None
+    protocol: Optional[str] = None
+    program: Optional[str] = None
+    classes: list[str] = Field(default_factory=list)  # أنواع الجدار التي تنطبق
+
+
+class FirewallBoundary(BaseModel):
+    """حدّ من حدود الجدار الناري (ما لا يستطيع الجدار وحده حمايته) والوحدة
+    التي تغطّيه في النظام."""
+    boundary: str
+    covered_by: str
+    note: str = ""
+
+
+class FirewallAuditReport(BaseModel):
+    """نتيجة تدقيق الجدار الناري للقراءة فقط (الفصل 3) على جهاز النظام."""
+    profiles: list[FirewallProfileInfo] = Field(default_factory=list)
+    classified_rules: list[FirewallRuleClass] = Field(default_factory=list)
+    alerts: list["SecurityAuditFinding"] = Field(default_factory=list)
+    boundaries: list[FirewallBoundary] = Field(default_factory=list)
+    general_notes: list[str] = Field(default_factory=list)
+
+
 class ScanTarget(BaseModel):
     """نطاق فحص يدخله المستخدم يدويًا (شبكة محلية أو خارجية)."""
     cidr_or_host: str
@@ -195,6 +235,8 @@ class ScanReport(BaseModel):
     unsigned_program_findings: list[UnsignedProgramFinding] = Field(default_factory=list)
     # تدقيق أمني للقراءة فقط على إعدادات حماية جهاز النظام - بلا تعديل تلقائي
     security_audit_findings: list[SecurityAuditFinding] = Field(default_factory=list)
+    # تدقيق الجدار الناري (الفصل 3): حالة الملفات، تصنيف القواعد، التنبيهات
+    firewall_audit: Optional[FirewallAuditReport] = None
 
 
 class AgentInfo(BaseModel):

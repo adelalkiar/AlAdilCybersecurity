@@ -53,6 +53,7 @@
         <button id="change-password-btn">كلمة المرور</button>
         <button id="host-scan-btn">فحص الجهاز المحلي</button>
         <button id="audit-btn">التدقيق الأمني</button>
+        <button id="firewall-btn">الجدار الناري</button>
         <button id="phones-btn">تحصين الهواتف</button>
         <button id="trusted-networks-btn">الشبكات الموثوقة</button>
       </div>
@@ -140,6 +141,20 @@
           بنفسك؛ لا يوجد هنا أي زر "إيقاف/عزل" تلقائي.
         </p>
         <div id="host-scan-list"></div>
+      </div>
+    </div>
+
+    <div id="firewall-modal" class="modal hidden">
+      <div class="modal-content">
+        <button class="modal-close" id="firewall-close">×</button>
+        <h2>تدقيق الجدار الناري (الفصل 3)</h2>
+        <p class="hint">
+          تدقيق قراءة فقط لحالة جدار حماية ويندوز وقواعده، مع تصنيف كل قاعدة
+          حسب أنواع الجدران النارية في المنهج، وتنبيهات على الإعدادات الخطرة،
+          وحدود الجدار الناري والوحدة التي تغطّي كلًّا منها. النظام لا يُنشئ
+          ولا يُعدّل أي قاعدة — أوامر الإصلاح تُعرض نصًّا لتنفّذها بنفسك.
+        </p>
+        <div id="firewall-body"></div>
       </div>
     </div>
 

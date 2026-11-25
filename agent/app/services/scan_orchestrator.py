@@ -14,6 +14,7 @@ import logging
 from datetime import datetime
 
 from agent.app.discovery.bluetooth import bluetooth_scan
+from agent.app.discovery.firewall_audit import run_firewall_audit
 from agent.app.discovery.host_activity import annotate_host_activity
 from agent.app.discovery.mdns import mdns_scan
 from agent.app.discovery.network import arp_scan, discover_local_subnets
@@ -221,6 +222,16 @@ async def run_full_scan(
         logger.warning("تعذّرت مراقبة سلوك الوصول لجهاز النظام: %s", exc)
     score_all(all_devices)
 
+    # تدقيق الجدار الناري (الفصل 3) - يُمرَّر مسارات البرامج غير الموقَّعة
+    # لربط قواعد الجدار التي تشير إليها. قراءة فقط - لا يُعدّل أي قاعدة.
+    firewall_audit = None
+    try:
+        unsigned_paths = {f.path for f in unsigned_findings if getattr(f, "path", None)}
+        firewall_audit = await run_firewall_audit(unsigned_paths)
+    except Exception as exc:  # noqa: BLE001
+        errors.append(str(exc))
+        logger.warning("تعذّر تدقيق الجدار الناري: %s", exc)
+
     # سجل الثغرات المحلي: نراكم نتائج التدقيق عبر الزمن على هذا الجهاز نفسه
     # (محلي فقط - لا يُرفع لأي خادم مركزي ولا يُشارك عبر أجهزة أخرى)
     try:
@@ -243,4 +254,5 @@ async def run_full_scan(
         errors=errors,
         unsigned_program_findings=unsigned_findings,
         security_audit_findings=audit_findings,
+        firewall_audit=firewall_audit,
     )

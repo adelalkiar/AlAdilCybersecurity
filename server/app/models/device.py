@@ -35,6 +35,8 @@ class Agent(Base):
     unsigned_program_findings_json: Mapped[list] = mapped_column(JSON, default=list)
     # نتائج آخر تدقيق أمني للقراءة فقط على إعدادات حماية جهاز الوكيل
     security_audit_findings_json: Mapped[list] = mapped_column(JSON, default=list)
+    # نتيجة آخر تدقيق جدار ناري (الفصل 3) - كائن FirewallAuditReport مُسلسَل
+    firewall_audit_json: Mapped[dict] = mapped_column(JSON, default=dict)
 
     devices: Mapped[list["Device"]] = relationship(back_populates="agent")
 

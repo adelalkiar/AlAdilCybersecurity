@@ -27,6 +27,7 @@ def list_agents(db: Session = Depends(get_db)):
             "last_seen": agent.last_seen.isoformat(),
             "unsigned_program_findings": agent.unsigned_program_findings_json or [],
             "security_audit_findings": agent.security_audit_findings_json or [],
+            "firewall_audit": agent.firewall_audit_json or {},
         }
         for agent in agents
     ]

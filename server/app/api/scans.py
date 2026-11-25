@@ -80,6 +80,9 @@ def submit_scan_report(
         agent.security_audit_findings_json = [
             f.model_dump(mode="json") for f in report.security_audit_findings
         ]
+        agent.firewall_audit_json = (
+            report.firewall_audit.model_dump(mode="json") if report.firewall_audit else {}
+        )
 
         for scanned in report.devices:
             device = (

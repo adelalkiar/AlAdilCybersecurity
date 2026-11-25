@@ -513,6 +513,79 @@ $("#phones-btn").addEventListener("click", () => {
 });
 $("#phones-close").addEventListener("click", () => $("#phones-modal").classList.add("hidden"));
 
+async function loadFirewall() {
+  $("#firewall-body").innerHTML = "<p>جارٍ التحميل...</p>";
+  let agents = [];
+  try {
+    agents = await api("/api/agents");
+  } catch (e) {
+    $("#firewall-body").innerHTML = "<p>تعذّر التحميل.</p>";
+    return;
+  }
+  const fw = agents.map((a) => a.firewall_audit).find((f) => f && f.profiles && f.profiles.length);
+  if (!fw) {
+    $("#firewall-body").innerHTML = "<p>لا توجد نتائج بعد - ستظهر هنا بعد أول دورة فحص من الوكيل (على ويندوز).</p>";
+    return;
+  }
+
+  const profilesHtml = (fw.profiles || []).map((p) => `
+    <tr>
+      <td>${esc(p.name)}</td>
+      <td><span class="badge ${p.enabled ? "low" : "critical"}">${p.enabled ? "مفعّل" : "مطفأ"}</span></td>
+      <td>${esc(p.default_inbound)}</td>
+      <td>${esc(p.default_outbound)}</td>
+    </tr>`).join("");
+
+  // عدّ أنواع التصنيف
+  const classCounts = {};
+  (fw.classified_rules || []).forEach((r) => (r.classes || []).forEach((c) => { classCounts[c] = (classCounts[c] || 0) + 1; }));
+  const classHtml = Object.entries(classCounts).map(([c, n]) => `<li>${esc(c)}: ${n} قاعدة</li>`).join("");
+
+  const alertsHtml = (fw.alerts || []).map((a) => {
+    const badgeClass = { critical: "critical", high: "high", medium: "medium", low: "info" }[a.severity] || "info";
+    return `
+      <div class="vuln-item">
+        <h4><span class="badge ${badgeClass}">${esc(SEVERITY_LABELS[a.severity] || a.severity)}</span> ${esc(a.title)}</h4>
+        <p><b>الدليل:</b> ${esc(a.evidence)}</p>
+        <p><b>الأثر:</b> ${esc(a.impact)}</p>
+        ${a.fix_command ? `<div class="fix"><b>أمر الإصلاح (نفّذه أنت كمسؤول):</b><pre class="cmd-box">${esc(a.fix_command)}</pre>
+          ${a.undo_command ? `<details><summary>أمر التراجع</summary><pre class="cmd-box">${esc(a.undo_command)}</pre></details>` : ""}
+          <p class="hint">خطورة الإصلاح: ${esc(a.fix_risk)}</p></div>` : ""}
+      </div>`;
+  }).join("") || "<p class='posture-clear'>لا توجد تنبيهات على إعدادات الجدار الناري.</p>";
+
+  const boundariesHtml = (fw.boundaries || []).map((b) => `
+    <div class="vuln-item">
+      <h4>${esc(b.boundary)}</h4>
+      <p><b>تغطّيها الوحدة:</b> ${esc(b.covered_by)}</p>
+      <p class="hint">${esc(b.note)}</p>
+    </div>`).join("");
+
+  const notesHtml = (fw.general_notes || []).map((n) => `<li>${esc(n)}</li>`).join("");
+
+  $("#firewall-body").innerHTML = `
+    <h3>حالة ملفات التعريف</h3>
+    <table class="fw-table">
+      <thead><tr><th>الملف</th><th>الحالة</th><th>الوارد الافتراضي</th><th>الصادر الافتراضي</th></tr></thead>
+      <tbody>${profilesHtml}</tbody>
+    </table>
+    <h3>تصنيف القواعد حسب أنواع الجدران النارية</h3>
+    <ul>${classHtml || "<li>لا توجد قواعد سماح واردة.</li>"}</ul>
+    <h3>تنبيهات الإعدادات الخطرة</h3>
+    ${alertsHtml}
+    <h3>حدود الجدار الناري ← الوحدة المغطّية</h3>
+    ${boundariesHtml}
+    <h3>ملاحظات منهجية</h3>
+    <ul>${notesHtml}</ul>
+  `;
+}
+
+$("#firewall-btn").addEventListener("click", () => {
+  $("#firewall-modal").classList.remove("hidden");
+  loadFirewall();
+});
+$("#firewall-close").addEventListener("click", () => $("#firewall-modal").classList.add("hidden"));
+
 async function loadTrustedNetworks() {
   try {
     const entries = await api("/api/trusted-networks");
