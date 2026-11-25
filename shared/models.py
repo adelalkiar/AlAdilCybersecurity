@@ -115,6 +115,10 @@ class ScannedDevice(BaseModel):
     unusual_data_transfer_detected: bool = False
     host_activity_notes: list[str] = Field(default_factory=list)
 
+    # مرحلة الهجوم التي يوافقها سلوك الجهاز (الفصل 2) + خط زمني للمهاجم
+    attack_phase: str = "target_selection"  # target_selection|reconnaissance|attack
+    attacker_timeline: list[dict] = Field(default_factory=list)
+
 
 class UnsignedProgramFinding(BaseModel):
     """

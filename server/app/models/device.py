@@ -83,6 +83,10 @@ class Device(Base):
     unusual_data_transfer_detected: Mapped[bool] = mapped_column(default=False)
     host_activity_notes_json: Mapped[list] = mapped_column(JSON, default=list)
 
+    # مرحلة الهجوم (الفصل 2) + خط زمني للمهاجم
+    attack_phase: Mapped[str] = mapped_column(String(32), default="target_selection")
+    attacker_timeline_json: Mapped[list] = mapped_column(JSON, default=list)
+
     # ملاحظة يدوية حرة يضيفها المستخدم (تصنيف ثقة، تعليق تحقيق ...)
     analyst_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 

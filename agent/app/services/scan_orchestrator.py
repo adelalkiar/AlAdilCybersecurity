@@ -25,6 +25,7 @@ from agent.app.discovery.vuln_registry import update_local_registry
 from agent.app.discovery.wifi import wifi_scan
 from shared.authorization_gate import AuthorizationRequiredError, ensure_authorized
 from shared.models import ConnectionMedium, ScanReport, ScanTarget, ScannedDevice
+from shared.vuln_db.attack_phase import classify_all_phases
 from shared.vuln_db.cve_client import lookup_many
 from shared.vuln_db.device_classify import classify_all
 from shared.vuln_db.risk_scoring import score_all
@@ -221,6 +222,8 @@ async def run_full_scan(
     except Exception as exc:  # noqa: BLE001
         logger.warning("تعذّرت مراقبة سلوك الوصول لجهاز النظام: %s", exc)
     score_all(all_devices)
+    # وسم مرحلة الهجوم + خط زمني للمهاجم لكل جهاز (الفصل 2)
+    classify_all_phases(all_devices)
 
     # تدقيق الجدار الناري (الفصل 3) - يُمرَّر مسارات البرامج غير الموقَّعة
     # لربط قواعد الجدار التي تشير إليها. قراءة فقط - لا يُعدّل أي قاعدة.

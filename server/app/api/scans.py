@@ -154,6 +154,8 @@ def submit_scan_report(
             device.accessed_host_system = scanned.accessed_host_system
             device.unusual_data_transfer_detected = scanned.unusual_data_transfer_detected
             device.host_activity_notes_json = scanned.host_activity_notes
+            device.attack_phase = scanned.attack_phase
+            device.attacker_timeline_json = scanned.attacker_timeline
             # لا نكتب identity_spoof_suspected/note هنا - يُحسبان أعلاه
             # عند أول ظهور الجهاز فقط ويُحافَظ عليهما عبر دورات الفحص
             # اللاحقة (لا نُصفّرهما كل مرة إلا إذا أُعيد اكتشاف تعارض)

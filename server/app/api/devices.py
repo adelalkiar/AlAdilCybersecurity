@@ -163,6 +163,8 @@ def _serialize_device(device: Device, include_vulns: bool = False) -> dict:
         "accessed_host_system": device.accessed_host_system,
         "unusual_data_transfer_detected": device.unusual_data_transfer_detected,
         "host_activity_notes": device.host_activity_notes_json,
+        "attack_phase": device.attack_phase,
+        "attacker_timeline": device.attacker_timeline_json,
     }
     if include_vulns:
         data["vulnerabilities"] = [
